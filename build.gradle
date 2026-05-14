@@ -1,0 +1,19 @@
+allprojects {
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    dependencies {
+        implementation 'io.github.cdimascio:java-dotenv:5.2.2'
+    }
+}

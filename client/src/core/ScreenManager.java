@@ -1,4 +1,4 @@
-package client.core;
+package core;
 
 public class ScreenManager {
     

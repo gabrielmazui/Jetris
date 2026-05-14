@@ -1,0 +1,3 @@
+rootProject.name = 'Jetris'
+
+include 'client', 'server'
