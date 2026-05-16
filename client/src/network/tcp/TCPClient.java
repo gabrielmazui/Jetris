@@ -2,36 +2,105 @@ package network.tcp;
 
 import java.net.*;
 import java.io.*;
+import java.util.concurrent.LinkedBlockingQueue;
+
 import io.github.cdimascio.dotenv.Dotenv;
 
-public class TCPClient {
-    public TCPClient(){
-        Dotenv env = Dotenv.configure().directory("../").load();
-        String HOST = env.get("SERVER_HOST");
-        int PORT = Integer.parseInt(env.get("SERVER_PORT"));
+import exceptions.ConnectionException;
 
-        try (Socket socket = new Socket(HOST, PORT)){
+public class TCPClient implements Runnable {
+    private Boolean connected = false;
+    private BufferedReader in;  
+    private PrintWriter out;
+    private Socket socket;
 
-            PrintWriter out = new PrintWriter(
-                socket.getOutputStream(),
-                true
-            );
+    private Dotenv env = Dotenv.configure().directory("../").load();
+    private String HOST = env.get("SERVER_HOST");
+    private int PORT = Integer.parseInt(env.get("SERVER_PORT"));
 
-            BufferedReader in = new BufferedReader(
-                new InputStreamReader(socket.getInputStream())
-            );
+    private int retries = 0;
 
-            // out.println("teste");
+    static final int MAX_RETRIES = 10;
+    static LinkedBlockingQueue<String> rawQueue;
 
-            // String response = in.readLine();
+    public TCPClient(LinkedBlockingQueue<String> raw){
+        rawQueue = raw;
+    }
 
-            // System.out.println("Servidor respondeu: " + response);
+    @Override
+    public void run(){
+        if (connected) {
+            throw new ConnectionException("TCP connection already exists");
+        }
 
-        }catch (IOException e) {
+        while (!connected && (retries < MAX_RETRIES)) {
+            try {
+                socket = new Socket(HOST, PORT);
 
-            System.out.println("Error:");
-            e.printStackTrace();
+                out = new PrintWriter(
+                    socket.getOutputStream(),
+                    true
+                );
 
+                in = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream())
+                );
+
+                connected = true;
+                retries = 0;
+
+                startReaderLoop();
+
+            } catch (IOException e) {
+                retries++;
+                System.out.println("Error:");
+                e.printStackTrace();
+            }
+        }
+
+        if (!connected) {
+            throw new ConnectionException("Failed to connect after retries");
         }
     }
+
+    private void startReaderLoop(){
+        String msg; 
+        try{
+            while ((msg = in.readLine()) != null) { 
+                rawQueue.add(msg); 
+            }
+        }catch(IOException e){
+            System.out.println("Error:");
+            e.printStackTrace();
+        }
+    }
+
+    public void shutdown() throws ConnectionException{
+        if(!connected){
+            throw new ConnectionException("TCP connection does not exists");
+        }
+        try{
+            socket.close();
+            connected = false;
+        }
+        catch(IOException e){
+            System.out.println("Error:");
+            e.printStackTrace();
+        }
+    }
+
+    public Boolean isConnected(){
+        return connected;
+    }
+    
+    public void send(String message){
+        try{
+            out.println(message);
+        }
+        catch(Exception e){
+            System.out.println("Error:");
+            e.printStackTrace();
+        }
+    }
+
 }   

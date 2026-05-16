@@ -44,32 +44,73 @@ Controller <|.. LoginController
 Controller <|.. LobbyController
 Controller <|.. GameController
 
+%% =========================
+%% NETWORK
+%% =========================
+
 class NetworkManager {
-  +connectTCP()
-  +connectUDP()
-  +sendTCP()
-  +sendUDP()
+  +start()
+  +sendTCP(Packet)
+  +sendUDP(Packet)
 }
 
-class TCPClient
-class UDPClient
+class TCPClient {
+  +run()
+  +shutdown()
+  +isConnected()
+  +send()
+}
 
-NetworkManager --> TCPClient
-NetworkManager --> UDPClient
+class UDPClient {
+  -socket
+  +send()
+}
 
-class PacketParser
-class Dispatcher
+class PacketParser {
+  -parserThread
+  -rawQueue
+  -packetQueue
+  +parse()
+}
+
+class Dispatcher {
+  -packetQueue
+  +dispatch()
+}
+
+class Packet {
+  <<abstract>>
+  +opcode
+}
+
+class RawMessage {
+  +data
+}
+
+%% =========================
+%% STATE
+%% =========================
 
 class ClientState {
   +token
   +currentScreen
 }
 
+%% =========================
+%% RELAÇÕES
+%% =========================
+
 ClientMain --> ScreenManager
 ClientMain --> NetworkManager
-ClientMain --> PacketParser
 ClientMain --> Dispatcher
 ClientMain --> ClientState
+
+NetworkManager --> TCPClient
+NetworkManager --> UDPClient
+
+TCPClient --> RawMessage
+PacketParser --> Packet
+Dispatcher --> Packet
 
 Screen --> Controller
 Controller --> NetworkManager
