@@ -50,32 +50,44 @@ Controller <|.. GameController
 
 class NetworkManager {
   +start()
+  +shutdown()
+
   +sendTCP(Packet)
   +sendUDP(Packet)
 }
 
 class TCPClient {
   +run()
+
+  -connect()
+  -startReaderLoop()
+  -startPingLoop()
+  -handleDisconnect()
+  -handlePingLoop()
+
+  +send(String)
   +shutdown()
-  +isConnected()
-  +send()
 }
 
 class UDPClient {
-  -socket
-  +send()
+  +run()
+
+  -connect()
+  -startReaderLoop()
+  -startPingLoop
+  
+  +send(String)
+  +shutdown()
 }
 
 class PacketParser {
-  -parserThread
-  -rawQueue
-  -packetQueue
-  +parse()
+  +run()
+  +parse(String)
 }
 
 class Dispatcher {
-  -packetQueue
-  +dispatch()
+  +run()
+  +dispatch(Packet)
 }
 
 class Packet {
@@ -83,8 +95,27 @@ class Packet {
   +opcode
 }
 
-class RawMessage {
-  +data
+class NetworkContext {
+  +HOST
+  +PORT
+
+  +ping
+
+  +tcpState
+  +udpState
+
+  +rawQueueTCP
+  +rawQueueUDP
+  +packetQueue
+}
+
+class ConnectionState {
+  <<enumeration>>
+
+  CONNECTING
+  CONNECTED
+  RECONNECTING
+  DISCONNECTED
 }
 
 %% =========================
@@ -107,14 +138,20 @@ ClientMain --> ClientState
 
 NetworkManager --> TCPClient
 NetworkManager --> UDPClient
+NetworkManager --> PacketParser
 
-TCPClient --> RawMessage
 PacketParser --> Packet
 Dispatcher --> Packet
 
 Screen --> Controller
 Controller --> NetworkManager
 Controller --> ScreenManager
+
+TCPClient --> NetworkContext
+UDPClient --> NetworkContext
+PacketParser --> NetworkContext
+Dispatcher --> NetworkContext
+NetworkManager --> NetworkContext
 
 
 %% =========================

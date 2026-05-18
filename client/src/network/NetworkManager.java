@@ -1,26 +1,17 @@
 package network;
-import java.util.concurrent.LinkedBlockingQueue;
 
-import network.packets.Packet;
 import network.tcp.TCPClient;
 import network.udp.UDPClient;
 import network.parser.PacketParser;
 
 public class NetworkManager {
-    static LinkedBlockingQueue<String> rawQueue = new LinkedBlockingQueue<>();
-    static LinkedBlockingQueue<Packet> packetQueue = new LinkedBlockingQueue<>();
-    static TCPClient tcp;
-    static UDPClient udp; 
-    static PacketParser packetParser;
+    private static TCPClient tcp;
+    private static UDPClient udp; 
+    private static PacketParser packetParser;
 
-    public NetworkManager(LinkedBlockingQueue<String> raw, LinkedBlockingQueue<Packet> packet){
-        rawQueue = raw;
-        packetQueue = packet;
-    }
-
-    public void start(){
-        tcp = new TCPClient(rawQueue);
-        packetParser = new PacketParser(rawQueue, packetQueue);
+    static public void start(){
+        tcp = new TCPClient();
+        packetParser = new PacketParser();
 
         try{
             Thread.startVirtualThread(tcp);
@@ -33,6 +24,10 @@ public class NetworkManager {
         }
     }
 
-    //ping pong e verificao tcp se esta conectado
-    //caso nao estiver faz retry
+    static public void shutdown(){
+        tcp.shutdown();
+    }
+
+    //sendtcp ( recebe packet )
+    //sendudp ( recebe packet )
 }

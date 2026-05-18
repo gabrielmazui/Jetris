@@ -2,98 +2,127 @@ package network.tcp;
 
 import java.net.*;
 import java.io.*;
-import java.util.concurrent.LinkedBlockingQueue;
-
-import io.github.cdimascio.dotenv.Dotenv;
 
 import exceptions.ConnectionException;
+import network.NetworkContext;
+import network.NetworkContext.ConnectionState;
+
 
 public class TCPClient implements Runnable {
-    private Boolean connected = false;
     private BufferedReader in;  
     private PrintWriter out;
     private Socket socket;
 
-    private Dotenv env = Dotenv.configure().directory("../").load();
-    private String HOST = env.get("SERVER_HOST");
-    private int PORT = Integer.parseInt(env.get("SERVER_PORT"));
+    private volatile long lastPongTime;
 
     private int retries = 0;
 
-    static final int MAX_RETRIES = 10;
-    static LinkedBlockingQueue<String> rawQueue;
+    static private final int MAX_RETRIES = 20;
 
-    public TCPClient(LinkedBlockingQueue<String> raw){
-        rawQueue = raw;
-    }
-
-    @Override
-    public void run(){
-        if (connected) {
-            throw new ConnectionException("TCP connection already exists");
-        }
-
-        while (!connected && (retries < MAX_RETRIES)) {
+   @Override
+    public void run() {
+        retries = 0;
+        while(retries < MAX_RETRIES) {
             try {
-                socket = new Socket(HOST, PORT);
-
-                out = new PrintWriter(
-                    socket.getOutputStream(),
-                    true
-                );
-
-                in = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream())
-                );
-
-                connected = true;
+                NetworkContext.tcpState = ConnectionState.CONNECTING;
+                connect();
                 retries = 0;
 
                 startReaderLoop();
+                startPingLoop();
 
-            } catch (IOException e) {
+                while(NetworkContext.tcpState == ConnectionState.CONNECTED) {
+                    Thread.sleep(1000);
+                }
+
                 retries++;
-                System.out.println("Error:");
+                Thread.sleep(2000);
+
+            } catch(Exception e) {
+
+                retries++;
                 e.printStackTrace();
             }
         }
 
-        if (!connected) {
-            throw new ConnectionException("Failed to connect after retries");
-        }
+        NetworkContext.tcpState = ConnectionState.DISCONNECTED;
     }
 
-    private void startReaderLoop(){
-        String msg; 
-        try{
-            while ((msg = in.readLine()) != null) { 
-                rawQueue.add(msg); 
+    private void connect() throws IOException {
+        socket = new Socket(
+            NetworkContext.HOST,
+            NetworkContext.PORT
+        );
+
+        out = new PrintWriter(
+            socket.getOutputStream(),
+            true
+        );
+
+        in = new BufferedReader(
+            new InputStreamReader(
+                socket.getInputStream()
+            )
+        );
+
+        NetworkContext.tcpState = ConnectionState.CONNECTED;
+    }
+
+    private void startReaderLoop() {
+        Thread.startVirtualThread(() -> {
+            try {
+
+                String msg;
+
+                while (NetworkContext.tcpState == ConnectionState.CONNECTED && (msg = in.readLine()) != null) {
+
+                    if(msg.equals("PONG")) {
+                        lastPongTime = System.currentTimeMillis();
+                        continue;
+                    }
+
+                    NetworkContext.rawQueueTCP.add(msg);
+                }
+                handleDisconnect();
+
+            } catch(IOException e) {
+                handleDisconnect();
             }
-        }catch(IOException e){
-            System.out.println("Error:");
-            e.printStackTrace();
-        }
+        });
     }
 
-    public void shutdown() throws ConnectionException{
-        if(!connected){
-            throw new ConnectionException("TCP connection does not exists");
-        }
-        try{
+    public void shutdown() {
+        NetworkContext.tcpState = ConnectionState.DISCONNECTED;
+        try {
+
             socket.close();
-            connected = false;
-        }
-        catch(IOException e){
-            System.out.println("Error:");
+
+        } catch(IOException e) {
+
             e.printStackTrace();
         }
     }
 
-    public Boolean isConnected(){
-        return connected;
+    private void handleDisconnect() {
+        if(NetworkContext.tcpState != ConnectionState.CONNECTED) {
+            return;
+        }
+
+        NetworkContext.tcpState = ConnectionState.RECONNECTING;
+        try {
+
+            socket.close();
+
+        } catch(IOException e) {
+
+            e.printStackTrace();
+        }
     }
     
     public void send(String message){
+        if(NetworkContext.tcpState != ConnectionState.CONNECTED){
+            throw new ConnectionException("TCP connection does not exists");
+        }
         try{
             out.println(message);
         }
@@ -103,4 +132,30 @@ public class TCPClient implements Runnable {
         }
     }
 
+    private void startPingLoop() {
+        Thread.startVirtualThread(() -> {
+            lastPongTime = System.currentTimeMillis();
+            while(NetworkContext.tcpState == ConnectionState.CONNECTED) {
+                try {
+                    out.println("PING");
+                    Thread.sleep(2000);
+                    handlePingLoop();
+                } catch(Exception e) {
+
+                    handleDisconnect();
+                }
+            }
+        });
+    }
+
+    private void handlePingLoop() {
+        Thread.startVirtualThread(() -> {
+            while(NetworkContext.tcpState == ConnectionState.CONNECTED){
+                long currTime = System.currentTimeMillis();
+                if(currTime - lastPongTime > 8000){
+                    handleDisconnect();
+                }
+            }
+        });
+    }
 }   
