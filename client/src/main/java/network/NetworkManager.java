@@ -12,10 +12,12 @@ public class NetworkManager {
     static public void start(){
         tcp = new TCPClient();
         packetParser = new PacketParser();
+        udp = new UDPClient();
 
         try{
             Thread.startVirtualThread(tcp);
             Thread.startVirtualThread(packetParser);
+            Thread.startVirtualThread(udp);
             //dispatcher aqui
 
         }catch(Exception e){

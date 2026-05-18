@@ -13,13 +13,6 @@ public class NetworkContext {
     public static int PORT = Integer.parseInt(env.get("SERVER_PORT"));
     public static int ping = 0;
 
-    public enum ConnectionState {
-        CONNECTING,
-        CONNECTED,
-        RECONNECTING,
-        DISCONNECTED
-    }
-
     public static ConnectionState tcpState = ConnectionState.DISCONNECTED;
     public static ConnectionState udpState = ConnectionState.DISCONNECTED;
 
