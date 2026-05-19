@@ -1,11 +1,18 @@
-import network.NetworkManager;
+import core.ScreenManager;
+import javafx.application.Application;
+import javafx.stage.Stage;
 
-public class ClientMain {
+import network.NetworkManager;
+import ui.screens.LoadingScreen;
+
+public class ClientMain extends Application {
     
+    @Override
+    public void start(Stage stage){
+        ScreenManager.init(stage, new LoadingScreen());
+    }
     public static void main(String[] args) {
         NetworkManager.start();
-        try {
-            Thread.sleep(Long.MAX_VALUE);
-        } catch (InterruptedException ignored) {}
+        launch();
     }
 }

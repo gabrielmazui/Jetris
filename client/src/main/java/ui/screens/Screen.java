@@ -1,5 +1,7 @@
 package ui.screens;
 
-public interface Screen{
-    
+import javafx.scene.Parent;
+
+public interface Screen {
+    Parent getRoot();
 }

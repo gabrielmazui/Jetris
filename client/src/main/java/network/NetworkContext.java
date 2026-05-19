@@ -7,7 +7,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 import network.packets.Packet;
 
 public class NetworkContext {
-    private static Dotenv env = Dotenv.configure().directory("../").load();
+    private static Dotenv env = Dotenv.configure().directory("/config").load();
 
     public static String HOST = env.get("SERVER_HOST");
     public static int PORT = Integer.parseInt(env.get("SERVER_PORT"));
