@@ -7,15 +7,11 @@ import javafx.animation.ParallelTransition;
 import javafx.animation.RotateTransition;
 import javafx.animation.ScaleTransition;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -28,35 +24,6 @@ public class LoadingScreen implements Screen {
     private final VBox root;
 
     public LoadingScreen() {
-        // --- BARRA DE TÍTULO ULTRA-MODERNA (Estilo Windows 11 / Fluent Dark) ---
-        HBox windowBar = new HBox(5);
-        windowBar.setAlignment(Pos.CENTER_RIGHT);
-        windowBar.setPadding(new Insets(6, 12, 6, 16));
-        windowBar.setStyle("-fx-background-color: #111116;"); // Header mais escuro integrado
-
-        Label gameTitle = new Label("Jetris");
-        gameTitle.setStyle("""
-            -fx-text-fill: #8A8A93;
-            -fx-font-family: 'Segoe UI', system-ui;
-            -fx-font-size: 13px;
-            -fx-font-weight: bold;
-        """);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        // Botões minimalistas modernos (Estilo Windows Moderno)
-        Button btnMin = criarBotaoControle("—", "#2A2A35", "#FFFFFF");
-        Button btnMax = criarBotaoControle("🗖", "#2A2A35", "#FFFFFF");
-        Button btnClose = criarBotaoControle("✕", "#E81123", "#FFFFFF");
-
-        btnMin.setOnAction(e -> ScreenManager.minimizar());
-        btnMax.setOnAction(e -> ScreenManager.alternarTelaCheia());
-        btnClose.setOnAction(e -> ScreenManager.fechar());
-
-        windowBar.getChildren().addAll(gameTitle, spacer, btnMin, btnMax, btnClose);
-        ScreenManager.tornarArrastavel(windowBar);
-
         // --- CONTEÚDO CENTRAL ---
         VBox centerContent = new VBox(30);
         centerContent.setAlignment(Pos.CENTER);
@@ -102,40 +69,11 @@ public class LoadingScreen implements Screen {
 
         // --- ROOT CONTAINER ---
         root = new VBox();
-        root.setStyle("-fx-background-color: #18181F;"); // Fundo dark do app
-        root.getChildren().addAll(windowBar, centerContent);
+        root.setStyle("-fx-background-color: #18181F;"); // Mantém o fundo dark elegante do app
+        root.getChildren().addAll(centerContent);
 
         aplicarAnimacoes(title, spinnerContainer, status);
         simularCarregamento();
-    }
-
-    private Button criarBotaoControle(String texto, String hoverBg, String hoverText) {
-        Button btn = new Button(texto);
-        
-        String estiloNormal = """
-            -fx-background-color: transparent;
-            -fx-text-fill: #A0A0A8;
-            -fx-font-size: 11px;
-            -fx-font-family: 'Segoe UI', Symbol;
-            -fx-min-width: 46px;
-            -fx-min-height: 32px;
-            -fx-background-radius: 0; 
-        """;
-
-        String estiloHover = """
-            -fx-background-color: %s;
-            -fx-text-fill: %s;
-            -fx-font-size: 11px;
-            -fx-font-family: 'Segoe UI', Symbol;
-            -fx-min-width: 46px;
-            -fx-min-height: 32px;
-            -fx-background-radius: 0;
-        """.formatted(hoverBg, hoverText);
-
-        btn.setStyle(estiloNormal);
-        btn.setOnMouseEntered(e -> btn.setStyle(estiloHover));
-        btn.setOnMouseExited(e -> btn.setStyle(estiloNormal));
-        return btn;
     }
 
     private void aplicarAnimacoes(Label title, StackPane spinner, Label status) {
@@ -179,7 +117,9 @@ public class LoadingScreen implements Screen {
     private void simularCarregamento() {
         Thread.startVirtualThread(() -> {
             try {
-                Thread.sleep(15000000);
+                // Apenas um aviso: 15.000.000ms são mais de 4 horas de loading! 
+                // Ajuste esse valor depois para testes rápidos (ex: 3000 para 3 segundos)
+                Thread.sleep(15000000); 
                 Platform.runLater(() -> {
                     FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.8), root);
                     fadeOut.setFromValue(1);

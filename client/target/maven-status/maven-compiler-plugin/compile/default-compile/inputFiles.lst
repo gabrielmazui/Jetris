@@ -1,0 +1,14 @@
+/home/mazui/Documents/Jetris/client/src/main/java/core/ScreenManager.java
+/home/mazui/Documents/Jetris/client/src/main/java/network/ConnectionState.java
+/home/mazui/Documents/Jetris/client/src/main/java/exceptions/ConnectionException.java
+/home/mazui/Documents/Jetris/client/src/main/java/ClientMain.java
+/home/mazui/Documents/Jetris/client/src/main/java/network/NetworkContext.java
+/home/mazui/Documents/Jetris/client/src/main/java/ui/screens/Screen.java
+/home/mazui/Documents/Jetris/client/src/main/java/ui/controllers/Controller.java
+/home/mazui/Documents/Jetris/client/src/main/java/network/packets/Packet.java
+/home/mazui/Documents/Jetris/client/src/main/java/network/parser/PacketParser.java
+/home/mazui/Documents/Jetris/client/src/main/java/network/udp/UDPClient.java
+/home/mazui/Documents/Jetris/client/src/main/java/network/tcp/TCPClient.java
+/home/mazui/Documents/Jetris/client/src/main/java/network/NetworkManager.java
+/home/mazui/Documents/Jetris/client/src/main/java/ui/screens/LoginScreen.java
+/home/mazui/Documents/Jetris/client/src/main/java/ui/screens/LoadingScreen.java

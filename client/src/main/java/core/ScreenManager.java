@@ -4,7 +4,6 @@ import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 
 public class ScreenManager {
 
@@ -18,30 +17,14 @@ public class ScreenManager {
         stage = primaryStage;
         scene = new Scene(firstScreen.getRoot());
 
-        stage.initStyle(StageStyle.UNDECORATED);
-        stage.setFullScreenExitHint(""); 
+        // O título da janela nativa (aparece na barra do Windows/Linux)
+        stage.setTitle("Jetris"); 
 
         stage.setWidth(1280);
         stage.setHeight(720);
         stage.setMinWidth(900);
         stage.setMinHeight(600);
         stage.setScene(scene);
-
-        // FIX DEFINITIVO DO MINIMIZAR: Força o redesenho redimensionando 1 pixel inteiro
-        stage.iconifiedProperty().addListener((obs, wasIconified, isIconified) -> {
-            if (!isIconified) { // Quando a janela é restaurada
-                Platform.runLater(() -> {
-                    // Tira 1 pixel real da largura (ignora o arredondamento do Windows)
-                    double width = stage.getWidth();
-                    stage.setWidth(width - 1); 
-                    
-                    // No frame seguinte, devolve o pixel
-                    Platform.runLater(() -> {
-                        stage.setWidth(width);
-                    });
-                });
-            }
-        });
 
         stage.centerOnScreen();
         stage.show();
@@ -69,14 +52,10 @@ public class ScreenManager {
         stage.setFullScreen(!stage.isFullScreen());
     }
 
+    // Mantido caso você precise arrastar algum elemento interno no futuro, 
+    // mas não é mais necessário para mover a janela principal.
     public static void tornarArrastavel(Node node) {
         if (node == null) return;
-
-        node.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) {
-                alternarTelaCheia();
-            }
-        });
 
         node.setOnMousePressed(event -> {
             xOffset = event.getSceneX();
@@ -84,13 +63,6 @@ public class ScreenManager {
         });
 
         node.setOnMouseDragged(event -> {
-            if (stage.isFullScreen()) {
-                double xProportion = (event.getScreenX() - stage.getX()) / stage.getWidth();
-                stage.setFullScreen(false); 
-                xOffset = stage.getWidth() * xProportion;
-                yOffset = event.getSceneY();
-            }
-
             stage.setX(event.getScreenX() - xOffset);
             stage.setY(event.getScreenY() - yOffset);
         });
