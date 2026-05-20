@@ -20,35 +20,43 @@ public class TCPClient implements Runnable {
     public void run() {
         retries = 0;
         while (retries < MAX_RETRIES) {
+            long startTime = System.currentTimeMillis();
             try {
-                System.out.println("[TCP] Trying to connect to the server, attempt: " + retries);
+                System.out.println("[TCP] Trying to connect to the server, attempt: " + (retries + 1));
                 NetworkContext.tcpState = ConnectionState.CONNECTING;
                 
                 connect();
                 retries = 0;
 
-                startReaderLoop();
                 startPingLoop();
 
-                while (NetworkContext.tcpState == ConnectionState.CONNECTED) {
-                    long currTime = System.currentTimeMillis();
-                    if (currTime - lastPongTime > TIMEOUT_PONG) {
-                        System.out.println("[TCP] Connection timeout (No PONG received)");
-                        handleDisconnect();
-                        break;
+                String msg;
+                while (NetworkContext.tcpState == ConnectionState.CONNECTED && (msg = in.readLine()) != null) {
+                    if (msg.equals("PONG")) {
+                        lastPongTime = System.currentTimeMillis();
+                        continue;
                     }
-                    Thread.sleep(1000);
+                    NetworkContext.rawQueueTCP.add(msg);
                 }
 
             } catch (Exception e) {
-                System.out.println("[TCP] Connection failed: " + e.getMessage());
-                NetworkContext.tcpState = ConnectionState.RECONNECTING;
+        
             } finally {
+
+                if (NetworkContext.tcpState == ConnectionState.CONNECTED) {
+                    NetworkContext.tcpState = ConnectionState.RECONNECTING;
+                }
+                
                 cleanup();
                 retries++;
                 
-                if (retries < MAX_RETRIES) {
-                    sleep(2000);
+                long timeSpent = System.currentTimeMillis() - startTime;      
+                long remainingSleep = 2000 - timeSpent;
+
+                if (remainingSleep > 0 && retries < MAX_RETRIES && NetworkContext.tcpState != ConnectionState.DISCONNECTED) {
+                    try { 
+                        Thread.sleep(remainingSleep); 
+                    } catch (InterruptedException ignored) {}
                 }
             }
         }
@@ -58,38 +66,19 @@ public class TCPClient implements Runnable {
     }
 
     private void connect() throws IOException {
-        socket = new Socket(NetworkContext.HOST, NetworkContext.PORT);
-        
-        socket.setSoTimeout(10000); 
+    socket = new Socket();
+    socket.setSoTimeout(0); 
+    SocketAddress socketAddress = new InetSocketAddress(NetworkContext.HOST, NetworkContext.PORT);
 
-        out = new PrintWriter(socket.getOutputStream(), true);
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    socket.connect(socketAddress, 2000); 
 
-        lastPongTime = System.currentTimeMillis();
-        NetworkContext.tcpState = ConnectionState.CONNECTED;
-        System.out.println("[TCP] Connected");
-    }
+    out = new PrintWriter(socket.getOutputStream(), true);
+    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-    private void startReaderLoop() {
-        Thread.startVirtualThread(() -> {
-            try {
-                String msg;
-                while (NetworkContext.tcpState == ConnectionState.CONNECTED && (msg = in.readLine()) != null) {
-
-                    if (msg.equals("PONG")) {
-                        lastPongTime = System.currentTimeMillis();
-                        continue;
-                    }
-
-                    NetworkContext.rawQueueTCP.add(msg);
-                }
-            } catch (IOException e) {
-                System.out.println("[TCP] Reader loop error: " + e.getMessage());
-            } finally {
-                handleDisconnect();
-            }
-        });
-    }
+    lastPongTime = System.currentTimeMillis();
+    NetworkContext.tcpState = ConnectionState.CONNECTED;
+    System.out.println("[TCP] Connected");
+}
 
     private void startPingLoop() {
         Thread.startVirtualThread(() -> {
@@ -97,6 +86,12 @@ public class TCPClient implements Runnable {
                 try {
                     out.println("PING");
                     Thread.sleep(2000);
+                    
+                    if (System.currentTimeMillis() - lastPongTime > TIMEOUT_PONG) {
+                        System.out.println("[TCP] Connection timeout (No PONG received within " + TIMEOUT_PONG + "ms)");
+                        handleDisconnect();
+                        break;
+                    }
                 } catch (Exception e) {
                     handleDisconnect();
                     break;
@@ -112,8 +107,7 @@ public class TCPClient implements Runnable {
         try {
             out.println(message);
         } catch (Exception e) {
-            System.out.println("[TCP] Send error:");
-            e.printStackTrace();
+            System.out.println("[TCP] Send error: " + e.getMessage());
             handleDisconnect();
         }
     }
@@ -122,7 +116,7 @@ public class TCPClient implements Runnable {
         if (NetworkContext.tcpState == ConnectionState.CONNECTED) {
             NetworkContext.tcpState = ConnectionState.RECONNECTING;
         }
-        cleanup();
+        cleanup(); 
     }
 
     private void cleanup() {
@@ -139,7 +133,4 @@ public class TCPClient implements Runnable {
         cleanup();
     }
 
-    private void sleep(long ms) {
-        try { Thread.sleep(ms); } catch (InterruptedException ignored) {}
-    }
 }

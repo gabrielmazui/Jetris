@@ -19,37 +19,63 @@ public class UDPClient implements Runnable {
 
     @Override
     public void run() {
-
         while (retries < MAX_RETRIES) {
+            long startTime = System.currentTimeMillis();
             try {
                 System.out.println("[UDP] Connecting attempt: " + retries);
-                NetworkContext.udpState = ConnectionState.CONNECTING;
+                if (retries == 0) {
+                    NetworkContext.udpState = ConnectionState.CONNECTING;
+                } else {
+                    NetworkContext.udpState = ConnectionState.RECONNECTING;
+                }
 
                 connect();
-                
                 retries = 0; 
                 System.out.println("[UDP] Connected");
                 
-                startReaderLoop();
                 startPingLoop();
 
+                byte[] buffer = new byte[1024];
                 while (NetworkContext.udpState == ConnectionState.CONNECTED) {
-                    if (System.currentTimeMillis() - lastPongTime > DISCONNECT_TIME) {
-                        System.out.println("[UDP] timeout -> disconnecting");
-                        NetworkContext.udpState = ConnectionState.DISCONNECTED;
-                        break;
+                    try {
+                        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                        socket.receive(packet);
+
+                        String msg = new String(packet.getData(), 0, packet.getLength());
+
+                        if (msg.equals("PONG")) {
+                            lastPongTime = System.currentTimeMillis();
+                            NetworkContext.ping = (int)(lastPongTime - lastPingSent);
+                            continue;
+                        }
+
+                        NetworkContext.rawQueueUDP.add(msg);
+
+                    } catch (SocketTimeoutException e) {
+                        if (System.currentTimeMillis() - lastPongTime > DISCONNECT_TIME) {
+                            break;
+                        }
                     }
-                    Thread.sleep(500);
                 }
 
             } catch (Exception e) {
-                NetworkContext.udpState = ConnectionState.RECONNECTING;
+                if (NetworkContext.udpState == ConnectionState.CONNECTED) {
+                    NetworkContext.udpState = ConnectionState.RECONNECTING;
+                }
             } finally {
+                if (NetworkContext.udpState != ConnectionState.DISCONNECTED) {
+                    NetworkContext.udpState = ConnectionState.RECONNECTING;
+                }
                 cleanup();
                 retries++;
                 
-                if (retries < MAX_RETRIES) {
-                    sleep(1000); 
+                long timeSpent = System.currentTimeMillis() - startTime;      
+                long remainingSleep = 1000 - timeSpent;
+
+                if (remainingSleep > 0 && retries < MAX_RETRIES && NetworkContext.udpState != ConnectionState.DISCONNECTED) {
+                    try { 
+                        Thread.sleep(remainingSleep); 
+                    } catch (InterruptedException ignored) {}
                 }
             }
         }
@@ -63,7 +89,7 @@ public class UDPClient implements Runnable {
         socket = new DatagramSocket();
         socket.connect(address, NetworkContext.PORT);
 
-        socket.setSoTimeout(1500);
+        socket.setSoTimeout(1000);
 
         byte[] pingData = "PING".getBytes();
         DatagramPacket handshakePing = new DatagramPacket(pingData, pingData.length);
@@ -71,6 +97,7 @@ public class UDPClient implements Runnable {
 
         byte[] buffer = new byte[1024];
         DatagramPacket handshakePong = new DatagramPacket(buffer, buffer.length);
+        
         socket.receive(handshakePong); 
 
         String response = new String(handshakePong.getData(), 0, handshakePong.getLength());
@@ -78,46 +105,9 @@ public class UDPClient implements Runnable {
             throw new Exception("Invalid handshake response from server");
         }
 
-        socket.setSoTimeout(1000);
-
         lastPingSent = System.currentTimeMillis();
         lastPongTime = System.currentTimeMillis();
         NetworkContext.udpState = ConnectionState.CONNECTED;
-    }
-
-    private void startReaderLoop() {
-        Thread.startVirtualThread(() -> {
-            while (NetworkContext.udpState == ConnectionState.CONNECTED) {
-                try {
-                    byte[] buffer = new byte[1024];
-                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-                    socket.receive(packet);
-
-                    String msg = new String(packet.getData(), 0, packet.getLength());
-
-                    if (msg.equals("PONG")) {
-                        lastPongTime = System.currentTimeMillis();
-                        NetworkContext.ping = (int)(lastPongTime - lastPingSent);
-                        continue;
-                    }
-
-                    NetworkContext.rawQueueUDP.add(msg);
-
-                } catch (SocketTimeoutException e) {
-                    continue;
-                } catch (PortUnreachableException e) {
-                    System.out.println("[UDP] Port unreachable");
-                    NetworkContext.udpState = ConnectionState.DISCONNECTED;
-                    break;
-                } catch (Exception e) {
-                    System.out.println("[UDP] Reader error: " + e.getMessage());
-                    NetworkContext.udpState = ConnectionState.DISCONNECTED;
-                    break;
-                }
-            }
-            System.out.println("[UDP] Reader stopped");
-        });
     }
 
     private void startPingLoop() {
@@ -126,14 +116,12 @@ public class UDPClient implements Runnable {
                 try {
                     lastPingSent = System.currentTimeMillis();
                     send("PING");
-                    Thread.sleep(1000);
+                    Thread.sleep(1000); // Envia ping a cada 1 segundo
                 } catch (Exception e) {
-                    System.out.println("[UDP] Ping error");
-                    NetworkContext.udpState = ConnectionState.DISCONNECTED;
+                    System.out.println("[UDP] Ping stopped due to error");
                     break;
                 }
             }
-            System.out.println("[UDP] Ping stopped");
         });
     }
 
@@ -161,11 +149,5 @@ public class UDPClient implements Runnable {
     public void shutdown() {
         NetworkContext.udpState = ConnectionState.DISCONNECTED;
         cleanup();
-    }
-
-    private void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException ignored) {}
     }
 }

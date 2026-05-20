@@ -6,8 +6,8 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>jetris.online</groupId>
-    <artifactId>client</artifactId>
+    <groupId>Jetris</groupId>
+    <artifactId>Jetris</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -16,7 +16,12 @@
     </properties>
 
     <dependencies>
-
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>5.14.0</version>
+        </dependency>
+        
         <!-- dotenv -->
         <dependency>
             <groupId>io.github.cdimascio</groupId>
@@ -36,12 +41,13 @@
             <artifactId>javafx-fxml</artifactId>
             <version>21.0.4</version>
         </dependency>
-
     </dependencies>
 
     <build>
-        <plugins>
+        <!-- Força o nome do arquivo final a ser exatamente Jetris.jar -->
+        <finalName>Jetris</finalName>
 
+        <plugins>
             <!-- Compilador -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -53,38 +59,104 @@
                 </configuration>
             </plugin>
 
+            <!-- Executador padrão (mvn exec:java) -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.3.0</version>
                 <configuration>
-                    <mainClass>ClientMain</mainClass>
+                    <mainClass>Launcher</mainClass>
+                    <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>
 
+            <!-- Plugin do JAR Base -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.3.0</version>
                 <configuration>
+                    <outputDirectory>${project.build.directory}/libs</outputDirectory>
                     <archive>
                         <manifest>
-                            <mainClass>ClientMain</mainClass>
+                            <mainClass>Launcher</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
             </plugin>
 
+            <!-- Plugin Shade para unificar as dependências (Fat JAR) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/libs</outputDirectory>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>Launcher</mainClass>
+                                </transformer>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Plugin Oficial do JavaFX (mvn javafx:run) -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>ClientMain</mainClass>
+                    <mainClass>Launcher</mainClass>
+                    <options>
+                        <option>--add-modules</option>
+                        <option>javafx.controls,javafx.fxml</option>
+                    </options>
                 </configuration>
             </plugin>
-
+            
+            <!-- Ferramenta de empacotamento nativo (.exe do Windows) -->
+            <plugin>
+                <groupId>org.panteleyev</groupId>
+                <artifactId>jpackage-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <executions>
+                    <execution>
+                        <id>jpackage</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jpackage</goal>
+                        </goals>
+                        <configuration>
+                            <name>JetrisOnline</name>
+                            <type>APP_IMAGE</type> 
+                            <mainJar>Jetris.jar</mainJar>
+                            <mainClass>Launcher</mainClass>
+                            <input>${project.build.directory}/libs</input>
+                            <destination>${project.build.directory}/dist</destination>
+                            <vendor>JetrisTeam</vendor>
+                            <winConsole>false</winConsole> 
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-
 </project>

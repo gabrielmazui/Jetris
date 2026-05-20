@@ -3,7 +3,11 @@ package core;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
+
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef.HWND;
 
 public class ScreenManager {
 
@@ -17,8 +21,15 @@ public class ScreenManager {
         stage = primaryStage;
         scene = new Scene(firstScreen.getRoot());
 
-        // O título da janela nativa (aparece na barra do Windows/Linux)
-        stage.setTitle("Jetris"); 
+        String windowTitle = "Jetris";
+        stage.setTitle(windowTitle); 
+
+        // Ícone do app
+        try {
+            stage.getIcons().add(new Image(ScreenManager.class.getResourceAsStream("/icon.png")));
+        } catch (Exception e) {
+            System.out.println("Ícone não encontrado: " + e.getMessage());
+        }
 
         stage.setWidth(1280);
         stage.setHeight(720);
@@ -28,6 +39,39 @@ public class ScreenManager {
 
         stage.centerOnScreen();
         stage.show();
+
+        // FORÇAR O WINDOWS A DEIXAR A BARRA NATIVA PRETA
+        aplicarModoEscuroNativo(windowTitle);
+    }
+
+    private static void aplicarModoEscuroNativo(String title) {
+        try {
+            String os = System.getProperty("os.name").toLowerCase();
+            if (os.contains("win")) {
+                // Executa logo após a janela aparecer na tela
+                Platform.runLater(() -> {
+                    // Encontra o ponteiro (handle) da janela nativa do Windows pelo título
+                    HWND hwnd = User32.INSTANCE.FindWindow(null, title);
+                    
+                    if (hwnd != null) {
+                        // Atributo 20 do DWM (Immersive Dark Mode) para Windows 11 e Windows 10 modernos
+                        int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+                        int[] darkModeOn = {1}; // 1 = Ativado (Preto), 0 = Desativado (Branco)
+                        
+                        // Conversa direto com a API dwm.dll do Windows
+                        com.sun.jna.Function dwmSetWindowAttribute = com.sun.jna.Function.getFunction("dwmapi", "DwmSetWindowAttribute");
+                        dwmSetWindowAttribute.invokeInt(new Object[]{
+                            hwnd, 
+                            DWMWA_USE_IMMERSIVE_DARK_MODE, 
+                            darkModeOn, 
+                            4
+                        });
+                    }
+                });
+            }
+        } catch (Exception e) {
+            System.out.println("Não foi possível forçar a barra escura: " + e.getMessage());
+        }
     }
 
     public static void setScreen(ui.screens.Screen screen) {
@@ -52,8 +96,6 @@ public class ScreenManager {
         stage.setFullScreen(!stage.isFullScreen());
     }
 
-    // Mantido caso você precise arrastar algum elemento interno no futuro, 
-    // mas não é mais necessário para mover a janela principal.
     public static void tornarArrastavel(Node node) {
         if (node == null) return;
 
