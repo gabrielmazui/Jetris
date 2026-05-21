@@ -19,6 +19,7 @@ public class UDPClient implements Runnable {
 
     @Override
     public void run() {
+        retries = 0;
         while (retries < MAX_RETRIES) {
             long startTime = System.currentTimeMillis();
             try {
@@ -63,7 +64,7 @@ public class UDPClient implements Runnable {
                     NetworkContext.udpState = ConnectionState.RECONNECTING;
                 }
             } finally {
-                if (NetworkContext.udpState != ConnectionState.DISCONNECTED) {
+                if (retries < MAX_RETRIES && NetworkContext.udpState != ConnectionState.DISCONNECTED) {
                     NetworkContext.udpState = ConnectionState.RECONNECTING;
                 }
                 cleanup();

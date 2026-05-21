@@ -20,13 +20,15 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
 
+import core.ScreenManager;
+import ui.controllers.LoginController;
+
 public class LoginScreen implements Screen {
 
     private final StackPane root;
     private VBox loginBox;
     private VBox registerBox;
-    
-    // Labels para exibição de mensagens de erro
+
     private Label loginErrorLabel;
     private Label registerErrorLabel;
 
@@ -74,6 +76,7 @@ public class LoginScreen implements Screen {
     """;
 
     public LoginScreen() {
+        ScreenManager.controller = new LoginController();
         root = new StackPane();
         root.setStyle("-fx-background-color: #0F0F14;");
         root.setAlignment(Pos.CENTER);
@@ -83,10 +86,11 @@ public class LoginScreen implements Screen {
 
         root.getChildren().addAll(registerBox, loginBox);
         executarAnimacaoEntrada();
+
     }
 
     private void inicializarLoginBox() {
-        loginBox = new VBox(22); // Reduzi levemente o espaçamento para acomodar o label de erro
+        loginBox = new VBox(22);
         loginBox.setAlignment(Pos.CENTER);
         loginBox.setMaxWidth(360);
         loginBox.setStyle("-fx-padding: 40;");
@@ -101,12 +105,13 @@ public class LoginScreen implements Screen {
         usernameInput.setStyle(INPUT_STYLE);
 
         PasswordField passwordInput = new PasswordField();
-        passwordInput.setPromptText("Senha");
+        passwordInput.setPromptText("Password");
         passwordInput.setStyle(INPUT_STYLE);
 
-        // Inicializa o feedback de erro oculto
         loginErrorLabel = new Label("");
         loginErrorLabel.setStyle(ERROR_LABEL_STYLE);
+        loginErrorLabel.setWrapText(true);
+        loginErrorLabel.setMaxWidth(280);
         loginErrorLabel.setManaged(false);
         loginErrorLabel.setVisible(false);
 
@@ -129,7 +134,6 @@ public class LoginScreen implements Screen {
         HBox footer = new HBox(6, noAccountLabel, btnIrParaRegistro);
         footer.setAlignment(Pos.CENTER);
 
-        // Inserido o error label logo acima do botão de ação
         loginBox.getChildren().addAll(title, usernameInput, passwordInput, loginErrorLabel, loginButton, footer);
     }
 
@@ -155,9 +159,10 @@ public class LoginScreen implements Screen {
         regPassword.setPromptText("Password");
         regPassword.setStyle(INPUT_STYLE);
 
-        // Inicializa o feedback de erro oculto do registro
         registerErrorLabel = new Label("");
         registerErrorLabel.setStyle(ERROR_LABEL_STYLE);
+        registerErrorLabel.setWrapText(true);
+        registerErrorLabel.setMaxWidth(280);
         registerErrorLabel.setManaged(false);
         registerErrorLabel.setVisible(false);
 
@@ -183,14 +188,12 @@ public class LoginScreen implements Screen {
         registerBox.getChildren().addAll(title, regUsername, regPassword, registerErrorLabel, registerButton, footer);
     }
 
-    // --- ANIMAÇÃO DE ERRO (Shake / Tremor Visual) ---
     private void dispararFeedbackErro(Label targetLabel, VBox targetBox, String mensagem) {
         Platform.runLater(() -> {
             targetLabel.setText(mensagem.toUpperCase());
             targetLabel.setManaged(true);
             targetLabel.setVisible(true);
 
-            // Efeito tremor horizontal clássico de erro em jogos
             TranslateTransition t1 = new TranslateTransition(Duration.millis(50), targetBox);
             t1.setByX(-10);
             TranslateTransition t2 = new TranslateTransition(Duration.millis(50), targetBox);
@@ -211,48 +214,50 @@ public class LoginScreen implements Screen {
         registerErrorLabel.setManaged(false);
     }
 
-    // --- VALIDAÇÕES E ENVIO ---
     private void fazerLogin(String username, String password) {
         limparErros();
 
-        // Regra: Usuário precisa ter pelo menos 6 caracteres no Login
-        if (username == null || username.trim().length() < 6) {
-            dispararFeedbackErro(loginErrorLabel, loginBox, "Usuário deve ter pelo menos 6 caracteres");
+        if (password == null || password.isEmpty()) {
             return;
         }
 
-        System.out.println("Enviando requisição de Login para o servidor: " + username);
-        
-        /* 
-         Quando seu POST falhar no servidor, você só precisa chamar:
-         dispararFeedbackErro(loginErrorLabel, loginBox, "Credenciais Inválidas ou Servidor Offline");
-        */
+        if (username == null || username.trim().length() < 6) {
+            dispararFeedbackErro(loginErrorLabel, loginBox, "Username must be at least 6 characters long");
+            return;
+        }
+
+        System.out.println("Enviando GET Login para o servidor: " + username);
+        String ans = LoginController.login(username, password);
+        if(ans == "LOGGED"){
+            // block button and boxes
+        }else{
+            dispararFeedbackErro(loginErrorLabel, loginBox, ans);
+        }
+
     }
 
     private void criarConta(String username, String password) {
         limparErros();
 
-        // Validação de Usuário: entre 5 e 20 caracteres
         if (username == null || username.trim().length() < 5 || username.trim().length() > 20) {
-            dispararFeedbackErro(registerErrorLabel, registerBox, "Usuário deve conter entre 5 e 20 caracteres");
+            dispararFeedbackErro(registerErrorLabel, registerBox, "Username must be between 5 and 20 characters");
             return;
         }
 
-        // Validação de Senha: entre 6 e 30 caracteres
         if (password == null || password.length() < 6 || password.length() > 30) {
-            dispararFeedbackErro(registerErrorLabel, registerBox, "Senha deve conter entre 6 e 30 caracteres");
+            dispararFeedbackErro(registerErrorLabel, registerBox, "Password must be between 6 and 30 characters");
             return;
         }
 
         System.out.println("Enviando POST de registro: " + username);
-
-        /* 
-         Se o servidor responder informando que o usuário já existe, trate no callback assim:
-         dispararFeedbackErro(registerErrorLabel, registerBox, "Este nome de usuário já está em uso");
-        */
+        String ans = LoginController.register(username, password);
+        if(ans == "REGISTERED"){
+            alternarParaLogin();
+        }else{
+            dispararFeedbackErro(registerErrorLabel, registerBox, ans);
+        }
     }
 
-    // --- TRANSIÇÕES DE ALTERNÂNCIA DE TELA ---
     private void alternarParaRegistro() {
         limparErros();
         registerBox.setVisible(true);

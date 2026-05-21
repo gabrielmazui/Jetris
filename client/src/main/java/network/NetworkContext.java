@@ -20,7 +20,6 @@ public class NetworkContext {
         new LinkedBlockingQueue<>();
     public static final BlockingQueue<String> rawQueueUDP =
         new LinkedBlockingQueue<>();
-
     public static final BlockingQueue<Packet> packetQueue =
         new LinkedBlockingQueue<>();
 }

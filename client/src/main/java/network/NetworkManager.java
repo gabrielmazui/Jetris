@@ -3,7 +3,8 @@ package network;
 import network.tcp.TCPClient;
 import network.udp.UDPClient;
 import network.parser.PacketParser;
-
+import network.NetworkContext;
+import network.ConnectionState;
 import config.UserState;
 
 public class NetworkManager {
@@ -32,12 +33,34 @@ public class NetworkManager {
         tcp.shutdown();
     }
 
-    public static UserState verifyTokenCache(){
-        //verifica dentro do cache o token de sessao
-        // manda pro server
-        return null;
+    static public void retryConnection(){
+        try{
+            if(NetworkContext.tcpState == ConnectionState.DISCONNECTED){
+                Thread.startVirtualThread(tcp);
+            }
+
+            if(NetworkContext.udpState == ConnectionState.DISCONNECTED){
+                Thread.startVirtualThread(udp);
+            }
+
+        }catch(Exception e){
+            System.out.println("Error:");
+            e.printStackTrace();
+        }
     }
 
-    //sendtcp ( recebe packet )
-    //sendudp ( recebe packet )
+    public static Boolean verifyTokenCache(){
+        //verifica dentro do cache o token de sessao
+        //manda pro server
+        return false;
+    }
+
+    public static void sendTCP(String s){
+        tcp.send(s);
+    }
+
+    public static void sendUDP(String s){
+        udp.send(s);
+    }
+
 }

@@ -1,5 +1,6 @@
 package network.packets;
 
-public class Packet {
-    
+public abstract class Packet {
+    public String type;
+    public int code;
 }
