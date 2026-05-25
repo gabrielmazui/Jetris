@@ -35,6 +35,11 @@ public class ScreenManager {
             System.out.println("Ícone não encontrado: " + e.getMessage());
         }
 
+        stage.setOnCloseRequest(event -> {
+            Platform.exit();
+            System.exit(0); 
+        });
+
         stage.setWidth(1280);
         stage.setHeight(720);
         stage.setMinWidth(900);

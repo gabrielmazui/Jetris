@@ -2,9 +2,13 @@ package network;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import network.packets.Packet;
+import network.NetworkCallback;
 
 public class NetworkContext {
     private static Dotenv env = Dotenv.configure().directory("/config").load();
@@ -13,6 +17,9 @@ public class NetworkContext {
     public static int PORT = Integer.parseInt(env.get("SERVER_PORT"));
     public static int ping = 0;
 
+    public static final Map<Integer, NetworkCallback> mapCallbacks = new HashMap<>();
+    public static final AtomicInteger requestCallbackID = new AtomicInteger(0);
+
     public static ConnectionState tcpState = ConnectionState.DISCONNECTED;
     public static ConnectionState udpState = ConnectionState.DISCONNECTED;
 
@@ -20,6 +27,8 @@ public class NetworkContext {
         new LinkedBlockingQueue<>();
     public static final BlockingQueue<String> rawQueueUDP =
         new LinkedBlockingQueue<>();
-    public static final BlockingQueue<Packet> packetQueue =
+    public static final BlockingQueue<Packet> packetQueueTCP =
+        new LinkedBlockingQueue<>();
+    public static final BlockingQueue<Packet> packetQueueUDP =
         new LinkedBlockingQueue<>();
 }

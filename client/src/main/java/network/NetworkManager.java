@@ -2,26 +2,27 @@ package network;
 
 import network.tcp.TCPClient;
 import network.udp.UDPClient;
-import network.parser.PacketParser;
-import network.NetworkContext;
-import network.ConnectionState;
-import config.UserState;
+import network.parser.PacketParserTCP;
+import network.dispatcher.DispatcherTCP;
 
 public class NetworkManager {
     private static TCPClient tcp;
     private static UDPClient udp; 
-    private static PacketParser packetParser;
+    private static PacketParserTCP parserTCP;
+    private static DispatcherTCP dispatcherTCP;
 
     static public void start(){
         tcp = new TCPClient();
-        packetParser = new PacketParser();
         udp = new UDPClient();
+        parserTCP = new PacketParserTCP();
+        dispatcherTCP = new DispatcherTCP();
 
         try{
             Thread.startVirtualThread(tcp);
-            Thread.startVirtualThread(packetParser);
+            Thread.startVirtualThread(parserTCP);
+            Thread.startVirtualThread(dispatcherTCP);
+
             Thread.startVirtualThread(udp);
-            //dispatcher aqui
 
         }catch(Exception e){
             System.out.println("Error:");
@@ -49,18 +50,13 @@ public class NetworkManager {
         }
     }
 
-    public static Boolean verifyTokenCache(){
-        //verifica dentro do cache o token de sessao
-        //manda pro server
-        return false;
+    public static void sendTCP(String toSend, NetworkCallback callback){
+        NetworkContext.mapCallbacks.put(callback.code, callback);
+        tcp.send(toSend);
     }
 
-    public static void sendTCP(String s){
-        tcp.send(s);
-    }
-
-    public static void sendUDP(String s){
-        udp.send(s);
+    public static void sendUDP(String toSend){
+        udp.send(toSend);
     }
 
 }

@@ -7,12 +7,12 @@ import network.NetworkContext;
 import network.ConnectionState;
 
 public class TCPClient implements Runnable {
-    private BufferedReader in;  
-    private PrintWriter out;
-    private Socket socket;
+    private static BufferedReader in;  
+    private static PrintWriter out;
+    private static Socket socket;
 
-    private volatile long lastPongTime;
-    private int retries = 0;
+    private static volatile long lastPongTime;
+    private static int retries = 0;
     private static final int MAX_RETRIES = 30;
     private static final int TIMEOUT_PONG = 8000;
 
@@ -82,7 +82,7 @@ public class TCPClient implements Runnable {
 
     private void startPingLoop() {
         Thread.startVirtualThread(() -> {
-            while (NetworkContext.tcpState == ConnectionState.CONNECTED) {
+            while (!Thread.currentThread().isInterrupted() && NetworkContext.tcpState == ConnectionState.CONNECTED) {
                 try {
                     out.println("PING");
                     Thread.sleep(2000);
@@ -92,6 +92,10 @@ public class TCPClient implements Runnable {
                         handleDisconnect();
                         break;
                     }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                    
                 } catch (Exception e) {
                     handleDisconnect();
                     break;

@@ -24,6 +24,8 @@ import network.ConnectionState;
 import core.ScreenManager;
 import network.NetworkContext;
 import network.NetworkManager;
+import ui.controllers.LoginController;
+import config.UserSession;
 
 public class LoadingScreen implements Screen {
 
@@ -167,27 +169,35 @@ public class LoadingScreen implements Screen {
     private void aguardarCarregamento() {
         Thread.startVirtualThread(() -> {
             try {
-                while (true) {
+                while (!Thread.currentThread().isInterrupted()) {
                     Thread.sleep(1000);
+                    ConnectionState estadoAtual = NetworkContext.tcpState;
 
-                    if(NetworkContext.tcpState == ConnectionState.CONNECTED){
-                        transicaoParaProximaTela();
+                    if (estadoAtual == ConnectionState.CONNECTED) {
+                        aguardarAuth();
                         break;
-                    }else if(NetworkContext.tcpState == ConnectionState.RECONNECTING || NetworkContext.tcpState == ConnectionState.CONNECTING){
+                    } 
+                    else if (estadoAtual == ConnectionState.RECONNECTING || estadoAtual == ConnectionState.CONNECTING) {
                         continue;
-                    }else{
-                        exibirErroConexao();
+                    } 
+                    else {
+                        Platform.runLater(this::exibirErroConexao);
                         break;
                     }
                 }
-
-            } catch (InterruptedException ignored) {
-                Platform.runLater(this::exibirErroConexao);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         });
     }
+    private void aguardarAuth(){
+        Thread.startVirtualThread(() ->{
+            UserSession.carregarDoArquivo();
+            Platform.runLater(this::<LoginScreen>transicaoParaProximaTela);
+        });
+    }
 
-    private void transicaoParaProximaTela() {
+    private <T> void transicaoParaProximaTela() {
         pulse.stop();
         rotate.stop();
 
@@ -216,8 +226,16 @@ public class LoadingScreen implements Screen {
             statusFadeOut
         );
 
-        outroAnimation.setOnFinished(evt -> ScreenManager.setScreen(new LoginScreen()));
-        outroAnimation.play();
+        
+        // if(LoginController.verifyTokenCache()){
+        //     // pula para a home screen
+        //     // outroAnimation.setOnFinished(evt -> ScreenManager.setScreen(new HomeScreen()));
+        //     // outroAnimation.play();
+        // }else{
+        //     outroAnimation.setOnFinished(evt -> ScreenManager.setScreen(new LoginScreen()));
+        //     outroAnimation.play();
+        // }
+        
     }
 
     private void exibirErroConexao() {

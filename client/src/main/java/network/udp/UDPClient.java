@@ -113,11 +113,11 @@ public class UDPClient implements Runnable {
 
     private void startPingLoop() {
         Thread.startVirtualThread(() -> {
-            while (NetworkContext.udpState == ConnectionState.CONNECTED) {
+            while (!Thread.currentThread().isInterrupted() && NetworkContext.tcpState == ConnectionState.CONNECTED) {
                 try {
                     lastPingSent = System.currentTimeMillis();
                     send("PING");
-                    Thread.sleep(1000); // Envia ping a cada 1 segundo
+                    Thread.sleep(1000); 
                 } catch (Exception e) {
                     System.out.println("[UDP] Ping stopped due to error");
                     break;
