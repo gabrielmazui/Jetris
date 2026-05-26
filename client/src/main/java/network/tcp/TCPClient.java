@@ -66,19 +66,19 @@ public class TCPClient implements Runnable {
     }
 
     private void connect() throws IOException {
-    socket = new Socket();
-    socket.setSoTimeout(0); 
-    SocketAddress socketAddress = new InetSocketAddress(NetworkContext.HOST, NetworkContext.PORT);
+        socket = new Socket();
+        socket.setSoTimeout(0); 
+        SocketAddress socketAddress = new InetSocketAddress(NetworkContext.HOST, NetworkContext.PORT);
 
-    socket.connect(socketAddress, 2000); 
+        socket.connect(socketAddress, 2000); 
 
-    out = new PrintWriter(socket.getOutputStream(), true);
-    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        out = new PrintWriter(socket.getOutputStream(), true);
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-    lastPongTime = System.currentTimeMillis();
-    NetworkContext.tcpState = ConnectionState.CONNECTED;
-    System.out.println("[TCP] Connected");
-}
+        lastPongTime = System.currentTimeMillis();
+        NetworkContext.tcpState = ConnectionState.CONNECTED;
+        System.out.println("[TCP] Connected");
+    }
 
     private void startPingLoop() {
         Thread.startVirtualThread(() -> {

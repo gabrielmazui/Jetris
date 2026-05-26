@@ -3,6 +3,7 @@ package ui.screens;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
 import javafx.animation.SequentialTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
@@ -19,6 +20,8 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
+import javafx.scene.control.TextFormatter;
+import java.util.function.UnaryOperator;
 
 import core.ScreenManager;
 import ui.controllers.LoginController;
@@ -90,6 +93,20 @@ public class LoginScreen implements Screen {
     }
 
     private void inicializarLoginBox() {
+        UnaryOperator<TextFormatter.Change> usernameFilter = change -> {
+            if (change.getControlNewText().matches("^[a-zA-Z0-9_]*$")) {
+                return change;
+            }
+            return null;
+        };
+
+        UnaryOperator<TextFormatter.Change> passwordFilter = change -> {
+            if (!change.getControlNewText().contains(" ")) {
+                return change;
+            }
+            return null;
+        };
+
         loginBox = new VBox(22);
         loginBox.setAlignment(Pos.CENTER);
         loginBox.setMaxWidth(360);
@@ -107,6 +124,9 @@ public class LoginScreen implements Screen {
         PasswordField passwordInput = new PasswordField();
         passwordInput.setPromptText("Password");
         passwordInput.setStyle(INPUT_STYLE);
+
+        usernameInput.setTextFormatter(new TextFormatter<>(usernameFilter));
+        passwordInput.setTextFormatter(new TextFormatter<>(passwordFilter));
 
         loginErrorLabel = new Label("");
         loginErrorLabel.setStyle(ERROR_LABEL_STYLE);
@@ -138,6 +158,21 @@ public class LoginScreen implements Screen {
     }
 
     private void inicializarRegisterBox() {
+
+        UnaryOperator<TextFormatter.Change> usernameFilter = change -> {
+            if (change.getControlNewText().matches("^[a-zA-Z0-9_]*$")) {
+                return change;
+            }
+            return null;
+        };
+
+        UnaryOperator<TextFormatter.Change> passwordFilter = change -> {
+            if (!change.getControlNewText().contains(" ")) {
+                return change;
+            }
+            return null;
+        };
+
         registerBox = new VBox(22);
         registerBox.setAlignment(Pos.CENTER);
         registerBox.setMaxWidth(360);
@@ -158,6 +193,9 @@ public class LoginScreen implements Screen {
         PasswordField regPassword = new PasswordField();
         regPassword.setPromptText("Password");
         regPassword.setStyle(INPUT_STYLE);
+
+        regUsername.setTextFormatter(new TextFormatter<>(usernameFilter));
+        regPassword.setTextFormatter(new TextFormatter<>(passwordFilter));
 
         registerErrorLabel = new Label("");
         registerErrorLabel.setStyle(ERROR_LABEL_STYLE);
@@ -214,6 +252,27 @@ public class LoginScreen implements Screen {
         registerErrorLabel.setManaged(false);
     }
 
+    private void setInterfaceBloqueada(boolean bloqueado, VBox box) {
+        box.setDisable(bloqueado);
+    }
+
+    private void animarTransicaoParaMainScreen() {
+        FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.5), root);
+        fadeOut.setToValue(0.0);
+        fadeOut.setInterpolator(Interpolator.EASE_IN);
+
+        ScaleTransition scaleOut = new ScaleTransition(Duration.seconds(0.5), root);
+        scaleOut.setToX(1.1);
+        scaleOut.setToY(1.1);
+        scaleOut.setInterpolator(Interpolator.EASE_IN);
+
+        ParallelTransition transicao = new ParallelTransition(fadeOut, scaleOut);
+        transicao.setOnFinished(e -> {
+            ScreenManager.setScreen(new MainScreen()); 
+        });
+        transicao.play();
+    }
+
     private void fazerLogin(String username, String password) {
         limparErros();
 
@@ -226,21 +285,32 @@ public class LoginScreen implements Screen {
             return;
         }
 
-        System.out.println("Enviando GET Login para o servidor: " + username);
-        String ans = LoginController.login(username, password);
-        if(ans == "LOGGED"){
-            // block button and boxes
-        }else{
-            dispararFeedbackErro(loginErrorLabel, loginBox, ans);
-        }
+        setInterfaceBloqueada(true, loginBox);
 
+        Thread.startVirtualThread(() -> {
+            String ans = LoginController.login(username, password); 
+            
+            Platform.runLater(() -> {
+                if ("SUCCESS".equals(ans)) {
+                    animarTransicaoParaMainScreen();
+                } else {
+                    setInterfaceBloqueada(false, loginBox);
+                    dispararFeedbackErro(loginErrorLabel, loginBox, ans);
+                }
+            });
+        });
     }
 
     private void criarConta(String username, String password) {
         limparErros();
 
-        if (username == null || username.trim().length() < 5 || username.trim().length() > 20) {
+        if (username == null || username.length() < 5 || username.length() > 20) {
             dispararFeedbackErro(registerErrorLabel, registerBox, "Username must be between 5 and 20 characters");
+            return;
+        }
+
+        if (!username.matches("^[a-zA-Z0-9_]+$")) {
+            dispararFeedbackErro(registerErrorLabel, registerBox, "Username can only contain letters, numbers, and underscores");
             return;
         }
 
@@ -249,16 +319,29 @@ public class LoginScreen implements Screen {
             return;
         }
 
-        System.out.println("Enviando POST de registro: " + username);
-        String ans = LoginController.register(username, password);
-        if(ans == "REGISTERED"){
-            alternarParaLogin();
-        }else{
-            dispararFeedbackErro(registerErrorLabel, registerBox, ans);
+        if (password.contains(" ")) {
+            dispararFeedbackErro(registerErrorLabel, registerBox, "Password cannot contain spaces");
+            return;
         }
+
+        setInterfaceBloqueada(true, registerBox);
+
+        Thread.startVirtualThread(() -> {
+            String ans = LoginController.register(username, password);
+            
+            Platform.runLater(() -> {
+                if ("SUCCESS".equals(ans)) {
+                    setInterfaceBloqueada(false, registerBox);
+                    alternarParaLogin();
+                } else {
+                    setInterfaceBloqueada(false, registerBox);
+                    dispararFeedbackErro(registerErrorLabel, registerBox, ans);
+                }
+            });
+        });
     }
 
-    private void alternarParaRegistro() {
+    public void alternarParaRegistro() {
         limparErros();
         registerBox.setVisible(true);
 
@@ -279,7 +362,7 @@ public class LoginScreen implements Screen {
         transicao.play();
     }
 
-    private void alternarParaLogin() {
+    public void alternarParaLogin() {
         limparErros();
         loginBox.setVisible(true);
 

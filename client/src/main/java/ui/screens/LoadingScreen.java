@@ -168,7 +168,12 @@ public class LoadingScreen implements Screen {
 
     private void aguardarCarregamento() {
         Thread.startVirtualThread(() -> {
+            
             try {
+                Thread.sleep(3000);
+                Platform.runLater(() -> this.transicaoParaProximaTela(new LoginScreen()));
+                // codigo momentaneo para teste
+
                 while (!Thread.currentThread().isInterrupted()) {
                     Thread.sleep(1000);
                     ConnectionState estadoAtual = NetworkContext.tcpState;
@@ -190,14 +195,20 @@ public class LoadingScreen implements Screen {
             }
         });
     }
+
     private void aguardarAuth(){
         Thread.startVirtualThread(() ->{
             UserSession.carregarDoArquivo();
-            Platform.runLater(this::<LoginScreen>transicaoParaProximaTela);
+            Screen screen = new LoginScreen();
+            if(LoginController.verifyTokenCache()){
+                screen = new MainScreen();
+            }
+            final Screen screen2 = screen;
+            Platform.runLater(() -> this.transicaoParaProximaTela(screen2));
         });
     }
 
-    private <T> void transicaoParaProximaTela() {
+    private void transicaoParaProximaTela(Screen screen) {
         pulse.stop();
         rotate.stop();
 
@@ -226,16 +237,8 @@ public class LoadingScreen implements Screen {
             statusFadeOut
         );
 
-        
-        // if(LoginController.verifyTokenCache()){
-        //     // pula para a home screen
-        //     // outroAnimation.setOnFinished(evt -> ScreenManager.setScreen(new HomeScreen()));
-        //     // outroAnimation.play();
-        // }else{
-        //     outroAnimation.setOnFinished(evt -> ScreenManager.setScreen(new LoginScreen()));
-        //     outroAnimation.play();
-        // }
-        
+        outroAnimation.setOnFinished(evt -> ScreenManager.setScreen(screen));
+        outroAnimation.play();
     }
 
     private void exibirErroConexao() {

@@ -5,6 +5,7 @@ import java.util.Properties;
 
 public class UserSession {
 
+    public static Boolean logged = false; 
     private static String token;
     private static String username;
     private static final String FILE_PATH = "cache_auth.properties";

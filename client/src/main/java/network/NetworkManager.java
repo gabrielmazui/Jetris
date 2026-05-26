@@ -34,6 +34,22 @@ public class NetworkManager {
         tcp.shutdown();
     }
 
+    static public void downHandlerLoopTCP(){
+        Thread.startVirtualThread(() -> {
+            try{
+                while (true) {
+                    Thread.sleep(1000);
+                    if(NetworkContext.tcpState == ConnectionState.DISCONNECTED || NetworkContext.tcpState == ConnectionState.DISCONNECTED){
+                        retryConnection();
+                        // show reconnecting menu
+                    }
+                }
+            }catch(InterruptedException e){
+                Thread.currentThread().interrupt();
+            }
+        });
+    }
+
     static public void retryConnection(){
         try{
             if(NetworkContext.tcpState == ConnectionState.DISCONNECTED){
@@ -51,12 +67,17 @@ public class NetworkManager {
     }
 
     public static void sendTCP(String toSend, NetworkCallback callback){
-        NetworkContext.mapCallbacks.put(callback.code, callback);
-        tcp.send(toSend);
+        if(NetworkContext.tcpState == ConnectionState.CONNECTED){
+            NetworkContext.mapCallbacks.put(callback.code, callback);
+            tcp.send(toSend);
+        }
     }
 
-    public static void sendUDP(String toSend){
-        udp.send(toSend);
+    public static void sendUDP(String toSend, NetworkCallback callback){
+        if(NetworkContext.tcpState == ConnectionState.CONNECTED){
+            NetworkContext.mapCallbacks.put(callback.code, callback);
+            udp.send(toSend);
+        }
     }
 
 }

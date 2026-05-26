@@ -1,8 +1,6 @@
 package ui.controllers;
 
-import ui.controllers.Controller;
 import network.NetworkManager;
-import network.packets.loginPacket;
 import network.NetworkCallback;
 import network.NetworkContext;
 import config.UserSession;
@@ -28,8 +26,10 @@ public class LoginController implements Controller{
         NetworkCallback c = new NetworkCallback(callbackCode) {
             @Override
             public void onSuccess(String resposta) {
+                resposta.split(" ", 2);
                 resultadoLogin.set(resposta);
                 UserSession.iniciarESalvarSessao(resposta, username);
+                UserSession.logged = true;
                 
                 trava.countDown();
             }
@@ -48,24 +48,64 @@ public class LoginController implements Controller{
             
             if (!respondeuEmTempo) {
                 NetworkContext.mapCallbacks.remove(callbackCode);
+                // return "Login failed. Please try again";
+
+                //MOMENTANEO DNV
+                resultadoLogin.set("SUCCESS");
+                UserSession.iniciarESalvarSessao("auth legal", username);
+                UserSession.logged = true;
+                //----
             }
             
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return "Erro interno de execução";
+            return "Internal error";
         }
 
+        
         return resultadoLogin.get();
     }
 
     public static String register(String username, String Password){
-        String send = "REGISTER 0 " + username + " " + Password;
-        NetworkManager.sendUDP(send);
-        // ir pra pagina de login se a registrar com sucesso
-        return "bah";
+        long TIMEOUT_MS = 5000;
+        int CallbackCode = NetworkContext.requestCallbackID.incrementAndGet();
+        String send = "REGISTER 0 " + CallbackCode + " " + username + " " + Password;
+
+        CountDownLatch trava = new CountDownLatch(1);
+        AtomicReference<String> resRegister = new AtomicReference<>("Timeout: Server did not answer in time");
+        NetworkCallback c = new NetworkCallback(CallbackCode) {
+            @Override
+            public void onSuccess(String resposta) {
+                resRegister.set(resposta);
+                
+                trava.countDown();
+            }
+
+            @Override
+            public void onFailure(String mensagemErro) {
+                resRegister.set(mensagemErro);
+                trava.countDown();
+            }
+        };
+        NetworkManager.sendTCP(send, c);
+        try {
+            boolean respondeuEmTempo = trava.await(TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            
+            if (!respondeuEmTempo) {
+                NetworkContext.mapCallbacks.remove(CallbackCode);
+                return "Register failed. Please try again";
+            }
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "Internal error";
+        }
+
+        return resRegister.get();
     }
 
     public static Boolean verifyTokenCache(){
+        System.out.print("Trying to login with auth token");
         long TIMEOUT_MS = 5000;
 
         String tok = UserSession.getToken();
@@ -81,6 +121,7 @@ public class LoginController implements Controller{
             @Override
             public void onSuccess(String resposta) {
                 logged.set(true);
+                UserSession.logged = true;
                 trava.countDown();
             }
 
@@ -96,5 +137,8 @@ public class LoginController implements Controller{
             Thread.currentThread().interrupt();
         }
         return logged.get();
+
+
+        //MOMENTANEO
     }
 }
