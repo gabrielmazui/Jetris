@@ -50,7 +50,7 @@ public class LoginController implements Controller{
                 NetworkContext.mapCallbacks.remove(callbackCode);
                 // return "Login failed. Please try again";
 
-                //MOMENTANEO DNV
+                //MOMENTANEO
                 resultadoLogin.set("SUCCESS");
                 UserSession.iniciarESalvarSessao("auth legal", username);
                 UserSession.logged = true;
@@ -137,8 +137,5 @@ public class LoginController implements Controller{
             Thread.currentThread().interrupt();
         }
         return logged.get();
-
-
-        //MOMENTANEO
     }
 }

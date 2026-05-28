@@ -3,12 +3,17 @@ package ui.screens;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.ParallelTransition;
+import javafx.animation.RotateTransition;
+import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -46,6 +51,7 @@ public class MainScreen implements Screen {
         -fx-padding: 10 14 10 14;
         -fx-font-family: 'Segoe UI';
         -fx-font-size: 13px;
+        -fx-transition: -fx-border-color 0.2s ease;
     """;
 
     private static final String PRIMARY_BUTTON_STYLE = """
@@ -114,6 +120,7 @@ public class MainScreen implements Screen {
 
         Button usersBtn = new Button("Users");
         usersBtn.setStyle(SECONDARY_BUTTON_STYLE);
+        applyButtonEffects(usersBtn, "#2E2E38", "#3E3E4A");
         usersBtn.setOnAction(e -> onUsersClick());
 
         Region spacer1 = new Region();
@@ -137,11 +144,13 @@ public class MainScreen implements Screen {
 
         Button settingsBtn = new Button("⚙");
         settingsBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6E6E77; -fx-font-size: 20px; -fx-cursor: hand;");
+        applyIconRotationEffect(settingsBtn);
         settingsBtn.setOnAction(e -> onSettingsClick());
 
         VBox profileBox = new VBox(4);
         profileBox.setAlignment(Pos.CENTER);
         profileBox.setStyle("-fx-cursor: hand;");
+        applyProfileHoverEffect(profileBox);
 
         Circle pfp = new Circle(18, Color.web("#2E2E38"));
         pfp.setStroke(Color.web("#00ADB5"));
@@ -154,27 +163,40 @@ public class MainScreen implements Screen {
         profileBox.getChildren().addAll(pfp, usernameLabel);
 
         ContextMenu profileMenu = new ContextMenu();
-        profileMenu.setStyle("-fx-background-color: #1E1E26;");
+        profileMenu.setStyle("-fx-background-color: #1E1E26; -fx-border-color: #2E2E38; -fx-border-radius: 4; -fx-background-radius: 4;");
         
         Label lblProfile = new Label("Profile");
         lblProfile.setTextFill(Color.WHITE);
         MenuItem profileItem = new MenuItem("", lblProfile);
-        profileItem.setOnAction(e -> onProfileClick());
+        profileItem.setOnAction(e -> {
+            profileMenu.hide();
+            onProfileClick();
+        });
         
         Label lblSettings = new Label("Settings");
         lblSettings.setTextFill(Color.WHITE);
         MenuItem settingsItem = new MenuItem("", lblSettings);
-        settingsItem.setOnAction(e -> onSettingsClick());
+        settingsItem.setOnAction(e -> {
+            profileMenu.hide();
+            onSettingsClick();
+        });
         
         Label lblLogout = new Label("Logout");
-        lblLogout.setTextFill(Color.WHITE);
+        lblLogout.setTextFill(Color.web("#FF4A4A"));
         MenuItem logoutItem = new MenuItem("", lblLogout);
-        logoutItem.setOnAction(e -> onLogoutClick());
+        logoutItem.setOnAction(e -> {
+            profileMenu.hide();
+            onLogoutClick();
+        });
         
         profileMenu.getItems().addAll(profileItem, settingsItem, logoutItem);
 
         profileBox.setOnMouseClicked(e -> {
-            profileMenu.show(profileBox, e.getScreenX(), e.getScreenY());
+            if (profileMenu.isShowing()) {
+                profileMenu.hide();
+            } else {
+                profileMenu.show(profileBox, Side.BOTTOM, 0, 5);
+            }
         });
 
         HBox rightControls = new HBox(20, pingBox, settingsBtn, profileBox);
@@ -197,13 +219,22 @@ public class MainScreen implements Screen {
         searchInput.setPromptText("Search match by code or user...");
         searchInput.setStyle(INPUT_STYLE);
         searchInput.setPrefWidth(400);
+        searchInput.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                searchInput.setStyle(INPUT_STYLE + "-fx-border-color: #00ADB5;");
+            } else {
+                searchInput.setStyle(INPUT_STYLE);
+            }
+        });
 
         Button findMatchBtn = new Button("Find Match");
         findMatchBtn.setStyle(PRIMARY_BUTTON_STYLE);
+        applyButtonEffects(findMatchBtn, "#00ADB5", "#33BEC4");
         findMatchBtn.setOnAction(e -> onFindMatch(searchInput.getText()));
 
         Button createMatchBtn = new Button("Create Private Match");
         createMatchBtn.setStyle(SECONDARY_BUTTON_STYLE);
+        applyButtonEffects(createMatchBtn, "#2E2E38", "#3E3E4A");
         createMatchBtn.setOnAction(e -> onCreatePrivateMatch());
 
         searchArea.getChildren().addAll(searchInput, findMatchBtn, createMatchBtn);
@@ -219,8 +250,15 @@ public class MainScreen implements Screen {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
-        Button refreshBtn = new Button("Refresh ⟳");
+        Label refreshIcon = new Label("⟳");
+        refreshIcon.setStyle("-fx-text-fill: #00ADB5; -fx-font-weight: bold;");
+        
+        Button refreshBtn = new Button("Refresh");
+        refreshBtn.setGraphic(refreshIcon);
+        refreshBtn.setContentDisplay(ContentDisplay.RIGHT);
         refreshBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #00ADB5; -fx-font-weight: bold; -fx-cursor: hand;");
+        
+        applyRefreshButtonEffects(refreshBtn, refreshIcon);
         refreshBtn.setOnAction(e -> onRefreshMatches());
         
         matchesHeader.getChildren().addAll(matchesTitle, spacer, refreshBtn);
@@ -258,6 +296,7 @@ public class MainScreen implements Screen {
         HBox card = new HBox(20);
         card.setStyle(MATCH_CARD_STYLE);
         card.setAlignment(Pos.CENTER_LEFT);
+        applyCardHoverEffect(card);
 
         VBox matchInfo = new VBox(5);
         Label playersLabel = new Label(user1 + " x " + user2);
@@ -279,12 +318,104 @@ public class MainScreen implements Screen {
         
         Button spectateBtn = new Button("Spectate");
         spectateBtn.setStyle(PRIMARY_BUTTON_STYLE);
+        applyButtonEffects(spectateBtn, "#00ADB5", "#33BEC4");
         spectateBtn.setOnAction(e -> onSpectate(matchId));
 
         spectateInfo.getChildren().addAll(spectatorsLabel, spectateBtn);
 
         card.getChildren().addAll(matchInfo, spacer, spectateInfo);
         matchesList.getChildren().add(card);
+    }
+
+    private void applyButtonEffects(Button button, String normalBg, String hoverBg) {
+        button.setOnMouseEntered(e -> button.setStyle(button.getStyle() + "-fx-background-color: " + hoverBg + ";"));
+        button.setOnMouseExited(e -> button.setStyle(button.getStyle() + "-fx-background-color: " + normalBg + ";"));
+        
+        button.setOnMousePressed(e -> {
+            ScaleTransition st = new ScaleTransition(Duration.millis(80), button);
+            st.setToX(0.95);
+            st.setToY(0.95);
+            st.play();
+        });
+        
+        button.setOnMouseReleased(e -> {
+            ScaleTransition st = new ScaleTransition(Duration.millis(80), button);
+            st.setToX(1.0);
+            st.setToY(1.0);
+            st.play();
+        });
+    }
+
+    private void applyRefreshButtonEffects(Button button, Label icon) {
+        button.setOnMouseEntered(e -> {
+            button.setStyle(button.getStyle() + "-fx-text-fill: #33BEC4;");
+            icon.setStyle(icon.getStyle() + "-fx-text-fill: #33BEC4;");
+        });
+        button.setOnMouseExited(e -> {
+            button.setStyle(button.getStyle() + "-fx-text-fill: #00ADB5;");
+            icon.setStyle(icon.getStyle() + "-fx-text-fill: #00ADB5;");
+        });
+        
+        button.setOnMousePressed(e -> {
+            RotateTransition rt = new RotateTransition(Duration.millis(300), icon);
+            rt.setByAngle(360);
+            
+            ScaleTransition st = new ScaleTransition(Duration.millis(100), button);
+            st.setToX(0.9);
+            st.setToY(0.9);
+            
+            new ParallelTransition(rt, st).play();
+        });
+        
+        button.setOnMouseReleased(e -> {
+            ScaleTransition st = new ScaleTransition(Duration.millis(100), button);
+            st.setToX(1.0);
+            st.setToY(1.0);
+            st.play();
+        });
+    }
+
+    private void applyIconRotationEffect(Button button) {
+        button.setOnMouseEntered(e -> {
+            button.setStyle(button.getStyle() + "-fx-text-fill: #FFFFFF;");
+            RotateTransition rt = new RotateTransition(Duration.millis(400), button);
+            rt.setToAngle(45);
+            rt.play();
+        });
+        button.setOnMouseExited(e -> {
+            button.setStyle(button.getStyle() + "-fx-text-fill: #6E6E77;");
+            RotateTransition rt = new RotateTransition(Duration.millis(400), button);
+            rt.setToAngle(0);
+            rt.play();
+        });
+    }
+
+    private void applyProfileHoverEffect(Node node) {
+        node.setOnMouseEntered(e -> {
+            FadeTransition ft = new FadeTransition(Duration.millis(150), node);
+            ft.setToValue(0.8);
+            ft.play();
+        });
+        node.setOnMouseExited(e -> {
+            FadeTransition ft = new FadeTransition(Duration.millis(150), node);
+            ft.setToValue(1.0);
+            ft.play();
+        });
+    }
+
+    private void applyCardHoverEffect(Node node) {
+        node.setOnMouseEntered(e -> {
+            node.setStyle(MATCH_CARD_STYLE + "-fx-border-color: #00ADB5; -fx-background-color: #23232D;");
+            TranslateTransition tt = new TranslateTransition(Duration.millis(150), node);
+            tt.setToX(4);
+            tt.play();
+        });
+        node.setOnMouseExited(e -> {
+            node.setStyle(MATCH_CARD_STYLE);
+            TranslateTransition tt = new TranslateTransition(Duration.millis(150), node);
+            tt.setToX(0);
+            tt.play();
+        });
     }
 
     public void updatePing(int ms) {
@@ -315,7 +446,7 @@ public class MainScreen implements Screen {
                     pingDots[i].setStroke(dotColor);
                 } else {
                     pingDots[i].setFill(Color.TRANSPARENT);
-                    pingDots[i].setStroke(Color.web("#5C5C64")); // Borda cinza pros pontos vazios
+                    pingDots[i].setStroke(Color.web("#5C5C64"));
                 }
             }
         });
@@ -333,6 +464,19 @@ public class MainScreen implements Screen {
         moveUp.setInterpolator(Interpolator.EASE_OUT);
 
         new ParallelTransition(fadeIn, moveUp).play();
+    }
+    
+    public void transitionToScreen(Runnable onFinished) {
+        FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.4), mainLayout);
+        fadeOut.setToValue(0.0);
+
+        TranslateTransition moveDown = new TranslateTransition(Duration.seconds(0.4), mainLayout);
+        moveDown.setToY(20.0);
+        moveDown.setInterpolator(Interpolator.EASE_IN);
+
+        ParallelTransition pt = new ParallelTransition(fadeOut, moveDown);
+        pt.setOnFinished(e -> onFinished.run());
+        pt.play();
     }
 
     private void populateMockMatches() {

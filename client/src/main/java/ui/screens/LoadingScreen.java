@@ -177,12 +177,13 @@ public class LoadingScreen implements Screen {
                 while (!Thread.currentThread().isInterrupted()) {
                     Thread.sleep(1000);
                     ConnectionState estadoAtual = NetworkContext.tcpState;
+                    ConnectionState estadoAtual2 = NetworkContext.udpState;
 
-                    if (estadoAtual == ConnectionState.CONNECTED) {
+                    if (estadoAtual == ConnectionState.CONNECTED && estadoAtual2 == ConnectionState.CONNECTED) {
                         aguardarAuth();
                         break;
                     } 
-                    else if (estadoAtual == ConnectionState.RECONNECTING || estadoAtual == ConnectionState.CONNECTING) {
+                    else if ((estadoAtual == ConnectionState.RECONNECTING || estadoAtual == ConnectionState.CONNECTING) || (estadoAtual2 == ConnectionState.RECONNECTING || estadoAtual2 == ConnectionState.CONNECTING)) {
                         continue;
                     } 
                     else {
