@@ -1,9 +1,8 @@
 .gradle/
 build/
 */build/
-
+target/
 .env
-
 *.class
-
 .vscode/
+dependency-reduced-pom.xml

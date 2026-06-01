@@ -13,7 +13,8 @@ public class NetworkContext {
     private static Dotenv env = Dotenv.configure().directory("/config").load();
 
     public static String HOST = env.get("SERVER_HOST");
-    public static int PORT = Integer.parseInt(env.get("SERVER_PORT"));
+    public static int PORT_TCP = Integer.parseInt(env.get("SERVER_PORT_TCP"));
+    public static int PORT_UDP = Integer.parseInt(env.get("SERVER_PORT_UDP"));
     public static int ping = 0;
 
     public static final Map<Integer, NetworkCallback> mapCallbacks = new HashMap<>();

@@ -88,7 +88,7 @@ public class UDPClient implements Runnable {
     private void connect() throws Exception {
         address = InetAddress.getByName(NetworkContext.HOST);
         socket = new DatagramSocket();
-        socket.connect(address, NetworkContext.PORT);
+        socket.connect(address, NetworkContext.PORT_UDP);
 
         socket.setSoTimeout(1000);
 

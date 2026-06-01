@@ -68,7 +68,7 @@ public class TCPClient implements Runnable {
     private void connect() throws IOException {
         socket = new Socket();
         socket.setSoTimeout(0); 
-        SocketAddress socketAddress = new InetSocketAddress(NetworkContext.HOST, NetworkContext.PORT);
+        SocketAddress socketAddress = new InetSocketAddress(NetworkContext.HOST, NetworkContext.PORT_TCP);
 
         socket.connect(socketAddress, 2000); 
 

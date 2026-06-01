@@ -124,7 +124,8 @@ class ConnectionState {
 
 class ClientState {
   +token
-  +currentScreen
+  +Username
+  +Pfp
 }
 
 %% =========================
