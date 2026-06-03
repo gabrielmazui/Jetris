@@ -30,6 +30,7 @@ public class UDPConnectionManager {
             InetAddress address = InetAddress.getByName(clientIp);
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, port);
             serverSocket.send(packet);
+            System.out.println("[UDP] Sent: [" + message + "] ClientIP: [" + clientIp + "]" );
         } catch (IOException e) {
             System.err.println("[UDP Send Error - Direct] " + e.getMessage());
         }

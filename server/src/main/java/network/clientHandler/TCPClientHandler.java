@@ -28,7 +28,6 @@ public class TCPClientHandler implements Runnable {
                     System.err.println("[TCP Handler] Warning: Packet from " + clientIp + " dropped. Size exceeded limit (" + rawData.length() + "/" + MAX_PACKET_SIZE + " bytes).");
                     break;
                 }
-                System.out.println("[TCP Handler] Received from " + clientIp + ": " + rawData);
                 TCPPacketParser.parse(rawData, clientIp);
             }
         } catch (IOException e) {

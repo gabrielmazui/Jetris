@@ -23,6 +23,9 @@ public class NetworkContext {
     public static ConnectionState tcpState = ConnectionState.CONNECTING;
     public static ConnectionState udpState = ConnectionState.CONNECTING;
 
+    public static volatile Boolean isAttemptingTCP = true;
+    public static volatile Boolean isAttemptingUDP = true;
+
     public static final BlockingQueue<String> rawQueueTCP =
         new LinkedBlockingQueue<>();
     public static final BlockingQueue<String> rawQueueUDP =

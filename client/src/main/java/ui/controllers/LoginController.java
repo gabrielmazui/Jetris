@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class LoginController implements Controller{
-    public static void escHandler(){
+public class LoginController implements Controller {
+    public static void escHandler() {
         return;
     } 
 
@@ -26,18 +26,15 @@ public class LoginController implements Controller{
         NetworkCallback c = new NetworkCallback(callbackCode) {
             @Override
             public void onSuccess(String resposta) {
-                resposta.split(" ", 2);
-                resultadoLogin.set(resposta);
                 UserSession.iniciarESalvarSessao(resposta, username);
                 UserSession.logged = true;
-                
+                resultadoLogin.set("SUCCESS");
                 trava.countDown();
             }
 
             @Override
             public void onFailure(String mensagemErro) {
                 resultadoLogin.set(mensagemErro);
-                
                 trava.countDown();
             }
         };
@@ -45,39 +42,30 @@ public class LoginController implements Controller{
 
         try {
             boolean respondeuEmTempo = trava.await(TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            
             if (!respondeuEmTempo) {
                 NetworkContext.mapCallbacks.remove(callbackCode);
-                // return "Login failed. Please try again";
-
-                //MOMENTANEO
-                resultadoLogin.set("SUCCESS");
-                UserSession.iniciarESalvarSessao("auth legal", username);
-                UserSession.logged = true;
-                //----
+                return "Login failed. Please try again";
             }
-            
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return "Internal error";
         }
 
-        
         return resultadoLogin.get();
     }
 
-    public static String register(String username, String Password){
+    public static String register(String username, String password) {
         long TIMEOUT_MS = 5000;
-        int CallbackCode = NetworkContext.requestCallbackID.incrementAndGet();
-        String send = "REGISTER 0 " + CallbackCode + " " + username + " " + Password;
+        int callbackCode = NetworkContext.requestCallbackID.incrementAndGet();
+        String send = "REGISTER 0 " + callbackCode + " " + username + " " + password;
 
         CountDownLatch trava = new CountDownLatch(1);
         AtomicReference<String> resRegister = new AtomicReference<>("Timeout: Server did not answer in time");
-        NetworkCallback c = new NetworkCallback(CallbackCode) {
+
+        NetworkCallback c = new NetworkCallback(callbackCode) {
             @Override
             public void onSuccess(String resposta) {
-                resRegister.set(resposta);
-                
+                resRegister.set("SUCCESS");
                 trava.countDown();
             }
 
@@ -88,14 +76,13 @@ public class LoginController implements Controller{
             }
         };
         NetworkManager.sendTCP(send, c);
+
         try {
             boolean respondeuEmTempo = trava.await(TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            
             if (!respondeuEmTempo) {
-                NetworkContext.mapCallbacks.remove(CallbackCode);
+                NetworkContext.mapCallbacks.remove(callbackCode);
                 return "Register failed. Please try again";
             }
-            
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return "Internal error";
@@ -104,16 +91,14 @@ public class LoginController implements Controller{
         return resRegister.get();
     }
 
-    public static Boolean verifyTokenCache(){
-        System.out.print("Trying to login with auth token");
+    public static Boolean verifyTokenCache() {
         long TIMEOUT_MS = 5000;
-
         String tok = UserSession.getToken();
-        if(tok == null || tok.length() == 0){
+        if (tok == null || tok.length() == 0) {
             return false;
         }
         int CallbackCode = NetworkContext.requestCallbackID.incrementAndGet();
-        String toSend = "LOGIN 0 " + CallbackCode + " "+ tok;
+        String toSend = "LOGIN 0 " + CallbackCode + " " + tok;
         
         AtomicBoolean logged = new AtomicBoolean(false);
         CountDownLatch trava = new CountDownLatch(1);
@@ -131,10 +116,16 @@ public class LoginController implements Controller{
                 trava.countDown();
             }
         });
+        System.out.println("Trying to login with auth token");
         try {
             trava.await(TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+        if (logged.get()) {
+            System.out.println("connected by auth login");  
+        } else {
+            System.out.println("could not login with auth token");
         }
         return logged.get();
     }

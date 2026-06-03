@@ -1,5 +1,6 @@
 package ui.screens;
 
+import config.UserSession;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.ParallelTransition;
@@ -31,6 +32,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
+import network.NetworkContext;
 
 public class MainScreen implements Screen {
 
@@ -39,6 +41,15 @@ public class MainScreen implements Screen {
     private VBox matchesList;
     private Circle[] pingDots;
     private Label pingLabel;
+    
+    private Label activeMatchesLabel;
+    private Label pageInfoLabel;
+    private Button prevPageBtn;
+    private Button nextPageBtn;
+    
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int totalActiveMatches = 0;
 
     private static final String INPUT_STYLE = """
         -fx-background-color: #1E1E26;
@@ -105,7 +116,7 @@ public class MainScreen implements Screen {
 
         executarAnimacaoEntrada();
         
-        updatePing(45);
+        UpdatePing(NetworkContext.ping);
     }
 
     private HBox createTopBar() {
@@ -156,7 +167,8 @@ public class MainScreen implements Screen {
         pfp.setStroke(Color.web("#00ADB5"));
         pfp.setStrokeWidth(2);
 
-        Label usernameLabel = new Label("PlayerOne");
+        String user = UserSession.getUsername();
+        Label usernameLabel = new Label(user);
         usernameLabel.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px; -fx-font-weight: bold;");
         usernameLabel.setMaxWidth(100);
 
@@ -244,8 +256,13 @@ public class MainScreen implements Screen {
         HBox matchesHeader = new HBox();
         matchesHeader.setAlignment(Pos.CENTER_LEFT);
         
+        VBox titleAndCounterBox = new VBox(4);
         Label matchesTitle = new Label("LIVE MATCHES");
         matchesTitle.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 16px; -fx-font-weight: 800; -fx-letter-spacing: 1px;");
+        
+        activeMatchesLabel = new Label("Current active matches: 0");
+        activeMatchesLabel.setStyle("-fx-text-fill: #6E6E77; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px; -fx-font-weight: bold;");
+        titleAndCounterBox.getChildren().addAll(matchesTitle, activeMatchesLabel);
         
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -261,7 +278,7 @@ public class MainScreen implements Screen {
         applyRefreshButtonEffects(refreshBtn, refreshIcon);
         refreshBtn.setOnAction(e -> onRefreshMatches());
         
-        matchesHeader.getChildren().addAll(matchesTitle, spacer, refreshBtn);
+        matchesHeader.getChildren().addAll(titleAndCounterBox, spacer, refreshBtn);
 
         matchesList = new VBox(10);
         
@@ -271,11 +288,30 @@ public class MainScreen implements Screen {
         scrollPane.setPrefHeight(400);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
-        matchesSection.getChildren().addAll(matchesHeader, scrollPane);
+        HBox paginationBox = new HBox(15);
+        paginationBox.setAlignment(Pos.CENTER);
+        paginationBox.setPadding(new Insets(10, 0, 0, 0));
+
+        prevPageBtn = new Button("< Prev");
+        prevPageBtn.setStyle(SECONDARY_BUTTON_STYLE);
+        applyButtonEffects(prevPageBtn, "#2E2E38", "#3E3E4A");
+        prevPageBtn.setOnAction(e -> onPreviousPage());
+
+        pageInfoLabel = new Label("Page 1 of 1");
+        pageInfoLabel.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 13px; -fx-font-weight: bold;");
+
+        nextPageBtn = new Button("Next >");
+        nextPageBtn.setStyle(SECONDARY_BUTTON_STYLE);
+        applyButtonEffects(nextPageBtn, "#2E2E38", "#3E3E4A");
+        nextPageBtn.setOnAction(e -> onNextPage());
+
+        paginationBox.getChildren().addAll(prevPageBtn, pageInfoLabel, nextPageBtn);
+
+        matchesSection.getChildren().addAll(matchesHeader, scrollPane, paginationBox);
 
         centerBox.getChildren().addAll(searchArea, matchesSection);
         
-        Platform.runLater(this::populateMockMatches);
+        Platform.runLater(this::fetchBackendMatchesData);
 
         return centerBox;
     }
@@ -293,10 +329,12 @@ public class MainScreen implements Screen {
     }
 
     private void addMatchCard(String user1, String user2, int score1, int score2, int round, int spectators, String matchId) {
+        StackPane cardWrapper = new StackPane();
+        cardWrapper.setMaxWidth(Double.MAX_VALUE);
+
         HBox card = new HBox(20);
         card.setStyle(MATCH_CARD_STYLE);
         card.setAlignment(Pos.CENTER_LEFT);
-        applyCardHoverEffect(card);
 
         VBox matchInfo = new VBox(5);
         Label playersLabel = new Label(user1 + " x " + user2);
@@ -324,7 +362,22 @@ public class MainScreen implements Screen {
         spectateInfo.getChildren().addAll(spectatorsLabel, spectateBtn);
 
         card.getChildren().addAll(matchInfo, spacer, spectateInfo);
-        matchesList.getChildren().add(card);
+        cardWrapper.getChildren().add(card);
+
+        cardWrapper.setOnMouseEntered(e -> {
+            card.setStyle(MATCH_CARD_STYLE + "-fx-border-color: #00ADB5; -fx-background-color: #23232D;");
+            TranslateTransition tt = new TranslateTransition(Duration.millis(150), card);
+            tt.setToX(4);
+            tt.play();
+        });
+        cardWrapper.setOnMouseExited(e -> {
+            card.setStyle(MATCH_CARD_STYLE);
+            TranslateTransition tt = new TranslateTransition(Duration.millis(150), card);
+            tt.setToX(0);
+            tt.play();
+        });
+
+        matchesList.getChildren().add(cardWrapper);
     }
 
     private void applyButtonEffects(Button button, String normalBg, String hoverBg) {
@@ -403,22 +456,8 @@ public class MainScreen implements Screen {
         });
     }
 
-    private void applyCardHoverEffect(Node node) {
-        node.setOnMouseEntered(e -> {
-            node.setStyle(MATCH_CARD_STYLE + "-fx-border-color: #00ADB5; -fx-background-color: #23232D;");
-            TranslateTransition tt = new TranslateTransition(Duration.millis(150), node);
-            tt.setToX(4);
-            tt.play();
-        });
-        node.setOnMouseExited(e -> {
-            node.setStyle(MATCH_CARD_STYLE);
-            TranslateTransition tt = new TranslateTransition(Duration.millis(150), node);
-            tt.setToX(0);
-            tt.play();
-        });
-    }
-
-    public void updatePing(int ms) {
+    @Override
+    public void UpdatePing(int ms) {
         Platform.runLater(() -> {
             int activeDots = 0;
             Color dotColor = Color.TRANSPARENT;
@@ -479,11 +518,56 @@ public class MainScreen implements Screen {
         pt.play();
     }
 
+    private void fetchBackendMatchesData() {
+        this.totalActiveMatches = onFetchTotalActiveMatchesCount();
+        this.totalPages = onFetchTotalPagesCount();
+        
+        activeMatchesLabel.setText("Current active matches: " + totalActiveMatches);
+        pageInfoLabel.setText("Page " + currentPage + " of " + totalPages);
+        
+        prevPageBtn.setDisable(currentPage == 1);
+        nextPageBtn.setDisable(currentPage == totalPages);
+        
+        populateMockMatches();
+    }
+
     private void populateMockMatches() {
         matchesList.getChildren().clear();
-        addMatchCard("Faker", "Caps", 2, 1, 4, 1240, "match_001");
-        addMatchCard("Gabriel", "Player2", 0, 0, 1, 5, "match_002");
-        addMatchCard("DarkKnight", "ProSniper", 3, 2, 6, 42, "match_003");
+        if (currentPage == 1) {
+            addMatchCard("Faker", "Caps", 2, 1, 4, 1240, "match_001");
+            addMatchCard("Gabriel", "Player2", 0, 0, 1, 5, "match_002");
+            addMatchCard("DarkKnight", "ProSniper", 3, 2, 6, 42, "match_003");
+        } else if (currentPage == 2) {
+            addMatchCard("BetaTester", "AlphaPlayer", 1, 1, 2, 14, "match_004");
+            addMatchCard("Shadow", "Light", 5, 4, 9, 89, "match_005");
+        }
+    }
+
+    private void onPreviousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            onPageRequested(currentPage);
+            fetchBackendMatchesData();
+        }
+    }
+
+    private void onNextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            onPageRequested(currentPage);
+            fetchBackendMatchesData();
+        }
+    }
+
+    private int onFetchTotalActiveMatchesCount() {
+        return 5;
+    }
+
+    private int onFetchTotalPagesCount() {
+        return 2;
+    }
+
+    private void onPageRequested(int page) {
     }
 
     private void onProfileClick() {
@@ -508,6 +592,12 @@ public class MainScreen implements Screen {
     }
 
     private void onRefreshMatches() {
+        fetchBackendMatchesData();
+    }
+
+    @Override 
+    public Boolean isPingDisplayed(){
+        return true;
     }
 
     @Override

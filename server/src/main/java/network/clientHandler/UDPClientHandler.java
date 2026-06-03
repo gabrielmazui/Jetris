@@ -5,7 +5,7 @@ import network.parser.UDPPacketParser;
 public class UDPClientHandler implements Runnable {
     private final byte[] data;
     private final String clientIp;
-    private final int clientPort; // ADICIONADO
+    private final int clientPort;
 
     public UDPClientHandler(byte[] data, String clientIp, int clientPort) {
         this.data = data;
@@ -16,7 +16,6 @@ public class UDPClientHandler implements Runnable {
     @Override
     public void run() {
         String rawData = new String(data);
-        System.out.println("[UDP Handler] Processing packet from " + clientIp + ":" + clientPort + " (" + data.length + " bytes): " + rawData);
         UDPPacketParser.parse(rawData, clientIp, clientPort);
     }
 }

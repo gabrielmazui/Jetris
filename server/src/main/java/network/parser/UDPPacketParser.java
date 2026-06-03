@@ -22,7 +22,6 @@ public class UDPPacketParser {
         String cleanData = rawData.trim();
 
         if (cleanData.equalsIgnoreCase("PING")) {
-            System.out.println("[UDP Parser] Devolvendo PONG direto para " + clientIp + ":" + clientPort);
             UDPConnectionManager.send(clientIp, clientPort, "PONG");
             return;
         }

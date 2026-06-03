@@ -5,7 +5,7 @@ import auth.SessionManager;
 public class AuthMiddleware extends Middleware {
     @Override
     public boolean check(String type, int code, int callbackCode, String body, String clientIp) {
-        if (type.equals("LOGIN")) {
+        if (type.equals("LOGIN") || type.equals("REGISTER")) {
             if (SessionManager.isSessionValid(clientIp)) {
                 return false;
             }

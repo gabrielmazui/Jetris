@@ -7,27 +7,28 @@ import network.NetworkContext;
 import network.ConnectionState;
 
 public class TCPClient implements Runnable {
-    private static BufferedReader in;  
-    private static PrintWriter out;
-    private static Socket socket;
+    private BufferedReader in;  
+    private PrintWriter out;
+    private Socket socket;
 
-    private static volatile long lastPongTime;
-    private static int retries = 0;
+    private volatile long lastPongTime;
+    private int retries = 0;
     private static final int MAX_RETRIES = 30;
-    private static final int TIMEOUT_PONG = 8000;
+    private static final int TIMEOUT_PONG = 6000;
 
     @Override
     public void run() {
+        NetworkContext.isAttemptingTCP = true;
         retries = 0;
         while (retries < MAX_RETRIES) {
             long startTime = System.currentTimeMillis();
             try {
-                System.out.println("[TCP] Trying to connect to the server, attempt: " + (retries + 1));
+                System.out.println("[TCP] Connecting attempt: " + (retries + 1));
                 NetworkContext.tcpState = ConnectionState.CONNECTING;
                 
                 connect();
-                retries = 0;
-
+                retries = MAX_RETRIES;
+                NetworkContext.isAttemptingTCP = false;
                 startPingLoop();
 
                 String msg;
@@ -60,9 +61,7 @@ public class TCPClient implements Runnable {
                 }
             }
         }
-
         NetworkContext.tcpState = ConnectionState.DISCONNECTED;
-        System.out.println("[TCP] Max retries reached");
     }
 
     private void connect() throws IOException {
@@ -95,7 +94,6 @@ public class TCPClient implements Runnable {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
-                    
                 } catch (Exception e) {
                     handleDisconnect();
                     break;
@@ -104,7 +102,7 @@ public class TCPClient implements Runnable {
         });
     }
 
-    public void send(String message) {
+    public void send(String message) throws ConnectionException {
         if (NetworkContext.tcpState != ConnectionState.CONNECTED) {
             throw new ConnectionException("TCP connection does not exist");
         }
@@ -136,5 +134,4 @@ public class TCPClient implements Runnable {
         NetworkContext.tcpState = ConnectionState.DISCONNECTED;
         cleanup();
     }
-
 }

@@ -21,6 +21,7 @@ public class TCPConnectionManager {
         PrintWriter writer = clientWriters.get(clientIp);
         if (writer != null) {
             writer.println(message);
+            System.out.println("[TCP] Sent: [" + message + "] ClientIP: [" + clientIp + "]" );
         }
     }
 }

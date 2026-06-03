@@ -7,8 +7,9 @@ import network.middleware.Middleware;
 import network.middleware.RateLimitMiddleware;
 import network.middleware.SessionMiddleware;
 import network.packets.LoginPacket;
-
+import network.packets.RegisterPacket;
 import auth.LoginController;
+import auth.RegisterController;
 
 public class TCPPacketParser {
 
@@ -58,16 +59,30 @@ public class TCPPacketParser {
 
         switch (type) {
             case "LOGIN":
-                if(code == 1){
+                System.out.println("[TCP] Received from IP: " + clientIp);
+                System.out.println("[TCP] ----> " + rawData);
+                {
+                    String[] credentials = bodyRaw.split(" ", 2);
+
+                    String username = credentials[0];
+                    String password = credentials.length > 1 ? credentials[1] : "";
+            
+                    LoginPacket loginPacket = new LoginPacket(code, callbackCode, username, password, credentials.length == 1 ? credentials[0] : "");
+                    LoginController.handle(loginPacket, clientIp);
+                }
+                break;
+            case "REGISTER":
+                System.out.println("[TCP] Received from IP: " + clientIp);
+                System.out.println("[TCP] ----> " + rawData);
+                {
                     String[] credentials = bodyRaw.split(" ", 2);
                     String username = credentials[0];
                     String password = credentials.length > 1 ? credentials[1] : "";
                     
-                    LoginPacket loginPacket = new LoginPacket(code, callbackCode, username, password, "");
-                    LoginController.handle(loginPacket, clientIp);
+                    RegisterPacket registerPacket = new RegisterPacket(code, callbackCode, username, password);
+                    RegisterController.handle(registerPacket, clientIp);
                 }
                 break;
-
             default:
                 System.err.println("[TCP Parser] Unknown Type (" + type + ") from " + clientIp);
                 break;

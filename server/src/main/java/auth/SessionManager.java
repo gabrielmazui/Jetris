@@ -19,11 +19,11 @@ public class SessionManager {
 
     public static void registerSession(String clientIp, String username) {
         String oldUser = ipToUser.put(clientIp, username);
-        if (oldUser != null) {
+        if (oldUser != null && !oldUser.equals(username)) {
             userToIp.remove(oldUser);
         }
         String oldIp = userToIp.put(username, clientIp);
-        if (oldIp != null) {
+        if (oldIp != null && !oldIp.equals(clientIp)) {
             ipToUser.remove(oldIp);
         }
     }
@@ -40,6 +40,7 @@ public class SessionManager {
     }
 
     public static String getUsernameByToken(String token) {
+        if (token == null) return null;
         return tokenToUser.get(token);
     }
 
@@ -54,11 +55,6 @@ public class SessionManager {
         String clientIp = userToIp.remove(username);
         if (clientIp != null) {
             ipToUser.remove(clientIp);
-        }
-        
-        String token = userToToken.remove(username);
-        if (token != null) {
-            tokenToUser.remove(token);
         }
     }
 

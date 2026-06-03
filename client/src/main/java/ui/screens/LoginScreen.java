@@ -106,8 +106,20 @@ public class LoginScreen implements Screen {
     }
 
     private void inicializarLoginBox() {
-        UnaryOperator<TextFormatter.Change> usernameFilter = change -> change.getControlNewText().matches("^[a-zA-Z0-9_]*$") ? change : null;
-        UnaryOperator<TextFormatter.Change> passwordFilter = change -> !change.getControlNewText().contains(" ") ? change : null;
+        UnaryOperator<TextFormatter.Change> usernameFilter = change -> {
+            String newText = change.getControlNewText();
+            if (newText.matches("^[a-zA-Z0-9_]*$") && newText.length() <= 25) {
+                return change;
+            }
+            return null;
+        };
+        UnaryOperator<TextFormatter.Change> passwordFilter = change -> {
+            String newText = change.getControlNewText();
+            if (!newText.contains(" ") && newText.length() <= 30) {
+                return change;
+            }
+            return null;
+        };
 
         loginBox = new VBox(22);
         loginBox.setAlignment(Pos.CENTER);
@@ -140,7 +152,7 @@ public class LoginScreen implements Screen {
         loginButton.setStyle(PRIMARY_BUTTON_STYLE);
         loginButton.setDisable(true);
 
-        Runnable validate = () -> loginButton.setDisable(usernameInput.getText().length() < 6 || passwordInput.getText().isEmpty());
+        Runnable validate = () -> loginButton.setDisable(usernameInput.getText().length() < 6 || usernameInput.getText().length() > 25 || passwordInput.getText().isEmpty() || passwordInput.getText().length() > 30);
         usernameInput.textProperty().addListener((o, old, val) -> validate.run());
         passwordInput.textProperty().addListener((o, old, val) -> validate.run());
 
@@ -158,8 +170,20 @@ public class LoginScreen implements Screen {
     }
 
     private void inicializarRegisterBox() {
-        UnaryOperator<TextFormatter.Change> usernameFilter = change -> change.getControlNewText().matches("^[a-zA-Z0-9_]*$") ? change : null;
-        UnaryOperator<TextFormatter.Change> passwordFilter = change -> !change.getControlNewText().contains(" ") ? change : null;
+        UnaryOperator<TextFormatter.Change> usernameFilter = change -> {
+            String newText = change.getControlNewText();
+            if (newText.matches("^[a-zA-Z0-9_]*$") && newText.length() <= 25) {
+                return change;
+            }
+            return null;
+        };
+        UnaryOperator<TextFormatter.Change> passwordFilter = change -> {
+            String newText = change.getControlNewText();
+            if (!newText.contains(" ") && newText.length() <= 30) {
+                return change;
+            }
+            return null;
+        };
 
         registerBox = new VBox(22);
         registerBox.setAlignment(Pos.CENTER);
@@ -194,7 +218,7 @@ public class LoginScreen implements Screen {
         registerButton.setStyle(PRIMARY_BUTTON_STYLE);
         registerButton.setDisable(true);
 
-        Runnable validate = () -> registerButton.setDisable(regUsername.getText().length() < 5 || regPassword.getText().length() < 6);
+        Runnable validate = () -> registerButton.setDisable(regUsername.getText().length() < 5 || regUsername.getText().length() > 25 || regPassword.getText().length() < 6 || regPassword.getText().length() > 30);
         regUsername.textProperty().addListener((o, old, val) -> validate.run());
         regPassword.textProperty().addListener((o, old, val) -> validate.run());
 

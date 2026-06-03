@@ -170,10 +170,6 @@ public class LoadingScreen implements Screen {
         Thread.startVirtualThread(() -> {
             
             try {
-                Thread.sleep(3000);
-                Platform.runLater(() -> this.transicaoParaProximaTela(new LoginScreen()));
-                // codigo momentaneo para teste
-
                 while (!Thread.currentThread().isInterrupted()) {
                     Thread.sleep(1000);
                     ConnectionState estadoAtual = NetworkContext.tcpState;
@@ -238,7 +234,10 @@ public class LoadingScreen implements Screen {
             statusFadeOut
         );
 
-        outroAnimation.setOnFinished(evt -> ScreenManager.setScreen(screen));
+        outroAnimation.setOnFinished(evt -> {
+            ScreenManager.retryMenu = false;
+            ScreenManager.setScreen(screen);
+        });
         outroAnimation.play();
     }
 
@@ -274,6 +273,8 @@ public class LoadingScreen implements Screen {
             retryButton.setOnMouseExited(evt -> retryButton.setStyle(RETRY_BUTTON_STYLE));
             retryButton.setOnAction(evt -> {
                 pulse.stop();
+                NetworkContext.isAttemptingUDP = false;
+                NetworkContext.isAttemptingTCP = false;
                 NetworkManager.retryConnection();
                 inicializarComponentes();
             });
@@ -296,4 +297,9 @@ public class LoadingScreen implements Screen {
     public Parent getRoot() {
         return root;
     }
+
+    @Override
+    public void EnableRetryMenu(){}
+    @Override
+    public void DisableRetryMenu(){}
 }

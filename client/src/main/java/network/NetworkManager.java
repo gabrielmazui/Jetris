@@ -3,6 +3,8 @@ package network;
 import network.tcp.TCPClient;
 import network.udp.UDPClient;
 import network.parser.PacketParserTCP;
+import core.ScreenManager;
+import exceptions.ConnectionException;
 import network.dispatcher.DispatcherTCP;
 
 public class NetworkManager {
@@ -21,63 +23,81 @@ public class NetworkManager {
             Thread.startVirtualThread(tcp);
             Thread.startVirtualThread(parserTCP);
             Thread.startVirtualThread(dispatcherTCP);
-
             Thread.startVirtualThread(udp);
 
+            Thread.startVirtualThread(() -> updatePingLoop());
+            Thread.startVirtualThread(() -> downHandlerLoop());
         }catch(Exception e){
-            System.out.println("Error:");
             e.printStackTrace();
         }
     }
 
     static public void shutdown(){
         tcp.shutdown();
+        udp.shutdown();
     }
 
-    static public void downHandlerLoopTCP(){
-        Thread.startVirtualThread(() -> {
-            try{
-                while (true) {
-                    Thread.sleep(1000);
-                    if(NetworkContext.tcpState == ConnectionState.DISCONNECTED || NetworkContext.tcpState == ConnectionState.DISCONNECTED){
-                        retryConnection();
-                        // show reconnecting menu
-                    }
+    static private void downHandlerLoop(){
+        try{
+            while (true) {
+                Thread.sleep(1000);
+                if(NetworkContext.tcpState == ConnectionState.RECONNECTING || NetworkContext.udpState == ConnectionState.RECONNECTING || NetworkContext.tcpState == ConnectionState.DISCONNECTED || NetworkContext.udpState == ConnectionState.DISCONNECTED){
+                    retryConnection();
+                    ScreenManager.CurrScreen.UpdatePing(-1);
                 }
-            }catch(InterruptedException e){
-                Thread.currentThread().interrupt();
+                if(NetworkContext.tcpState == ConnectionState.CONNECTED && NetworkContext.udpState == ConnectionState.CONNECTED){
+                    ScreenManager.CurrScreen.DisableRetryMenu();
+                }
             }
-        });
+        }catch(InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
     }
 
     static public void retryConnection(){
-        try{
-            if(NetworkContext.tcpState == ConnectionState.DISCONNECTED){
-                Thread.startVirtualThread(tcp);
-            }
-
-            if(NetworkContext.udpState == ConnectionState.DISCONNECTED){
-                Thread.startVirtualThread(udp);
-            }
-
-        }catch(Exception e){
-            System.out.println("Error:");
-            e.printStackTrace();
+        if(NetworkContext.tcpState != ConnectionState.CONNECTED && !NetworkContext.isAttemptingTCP){
+            Thread.startVirtualThread(tcp);
+            ScreenManager.CurrScreen.EnableRetryMenu();
+        }
+        if(NetworkContext.udpState != ConnectionState.CONNECTED && !NetworkContext.isAttemptingUDP){
+            Thread.startVirtualThread(udp);
+            ScreenManager.CurrScreen.EnableRetryMenu();
         }
     }
 
     public static void sendTCP(String toSend, NetworkCallback callback){
         if(NetworkContext.tcpState == ConnectionState.CONNECTED){
             NetworkContext.mapCallbacks.put(callback.code, callback);
-            tcp.send(toSend);
+            try{
+                tcp.send(toSend);
+            }catch(ConnectionException e){
+                retryConnection();
+            }
         }
     }
 
     public static void sendUDP(String toSend, NetworkCallback callback){
-        if(NetworkContext.tcpState == ConnectionState.CONNECTED){
+        if(NetworkContext.udpState == ConnectionState.CONNECTED){
             NetworkContext.mapCallbacks.put(callback.code, callback);
-            udp.send(toSend);
+            try{
+                udp.send(toSend);
+            }catch(Exception e){
+                retryConnection();
+            }
         }
     }
 
+    private static void updatePingLoop(){
+        try{
+            while(true){
+                Thread.sleep(1000);
+                if(NetworkContext.udpState != ConnectionState.CONNECTED || NetworkContext.tcpState != ConnectionState.CONNECTED){
+                    ScreenManager.CurrScreen.UpdatePing(-1);
+                }
+                if(ScreenManager.CurrScreen.isPingDisplayed()){
+                    ScreenManager.CurrScreen.UpdatePing(NetworkContext.ping);
+                }
+            }
+        }catch(InterruptedException e){}
+    }
 }

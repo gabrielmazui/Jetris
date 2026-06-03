@@ -32,10 +32,6 @@ public class PacketParserTCP implements Runnable {
                 switch (type) {
                     case "LOGIN":
                         String[] body = bodyRaw.split(" ", 2);
-                        if (body.length < 1) {
-                            continue;
-                        }
-
                         String status = body[0];
                         boolean isSuccess = "SUCCESS".equalsIgnoreCase(status);
 
@@ -59,14 +55,23 @@ public class PacketParserTCP implements Runnable {
                                 packet = new loginPacket(code, "", errMsg, false, callbackCode);
                             }
                         }
-
-                        if (packet != null) {
-                            NetworkContext.packetQueueTCP.add(packet);
-                        }
                         break;
-                
+
+                    case "REGISTER":
+                        String[] regBody = bodyRaw.split(" ", 2);
+                        String regStatus = regBody[0];
+                        boolean isRegSuccess = "SUCCESS".equalsIgnoreCase(regStatus);
+                        String regMsg = (regBody.length > 1) ? regBody[1] : "";
+                        
+                        packet = new registerPacket(code, isRegSuccess ? "SUCCESS" : regMsg, isRegSuccess, callbackCode);
+                        break;
+                        
                     default:
                         break;
+                }
+
+                if (packet != null) {
+                    NetworkContext.packetQueueTCP.add(packet);
                 }
 
             } catch (InterruptedException e) {
