@@ -301,6 +301,8 @@ public class MainScreen implements Screen {
         matchesList = new VBox(10);
         
         ScrollPane scrollPane = new ScrollPane(matchesList);
+        matchesList.setPadding(new Insets(10, 25, 10, 10));
+        matchesList.setPickOnBounds(false);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle(SCROLL_PANE_STYLE);
         scrollPane.setPrefHeight(400);
@@ -384,13 +386,18 @@ public class MainScreen implements Screen {
 
         cardWrapper.setOnMouseEntered(e -> {
             if (root.isDisable()) return;
+            card.setViewOrder(-1.0);
+            cardWrapper.setViewOrder(-1.0);
             card.setStyle(MATCH_CARD_STYLE + "-fx-border-color: #00ADB5; -fx-background-color: #23232D;");
             TranslateTransition tt = new TranslateTransition(Duration.millis(150), card);
-            tt.setToX(4);
+            tt.setToX(12);
             tt.play();
         });
+
         cardWrapper.setOnMouseExited(e -> {
             if (root.isDisable()) return;
+            card.setViewOrder(0.0);
+            cardWrapper.setViewOrder(0.0);
             card.setStyle(MATCH_CARD_STYLE);
             TranslateTransition tt = new TranslateTransition(Duration.millis(150), card);
             tt.setToX(0);

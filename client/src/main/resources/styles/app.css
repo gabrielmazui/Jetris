@@ -1,35 +1,25 @@
-.scroll-bar:vertical,
+.scroll-bar:vertical {
+    -fx-pref-width: 0;
+    -fx-opacity: 0;
+    opacity: 0;
+}
+
 .scroll-bar:horizontal {
-    -fx-pref-width: 0;
     -fx-pref-height: 0;
-    visibility: hidden;
+    opacity: 0;
+    -fx-opacity: 0;
 }
 
-.scroll-bar .thumb,
-.scroll-bar .track,
-.scroll-bar .increment-button,
-.scroll-bar .decrement-button,
-.scroll-bar .increment-arrow,
-.scroll-bar .decrement-arrow {
-    -fx-pref-width: 0;
+.scroll-bar:vertical .increment-button,
+.scroll-bar:vertical .decrement-button {
     -fx-pref-height: 0;
-    visibility: hidden;
+    opacity: 0;
+    -fx-opacity: 0;
 }
 
-.root {
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
-}
-
-.node {
-    -fx-background-insets: 0;
-}
-
-.root {
-    -fx-background-insets: 0;
-    -fx-content-display: clip;
-}
-
-.pane, .stack-pane, .vbox, .border-pane {
-    -fx-background-insets: 0;
+.scroll-bar:horizontal .increment-button,
+.scroll-bar:horizontal .decrement-button {
+    -fx-pref-width: 0;
+    opacity: 0;
+    -fx-opacity: 0;
 }

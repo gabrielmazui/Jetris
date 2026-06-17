@@ -85,13 +85,16 @@ public class DatabaseManager {
         if (connection == null || !connect()) {
             throw new DBException("[DB] error");
         }
-        String sql = "SELECT id FROM users WHERE username = ? AND password = ?";
+        String sql = "SELECT id, password FROM users WHERE username = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, username);
-            stmt.setString(2, password);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getInt("id");
+                    String hashedPasswordFromDb = rs.getString("password");
+                    
+                    if (org.mindrot.jbcrypt.BCrypt.checkpw(password, hashedPasswordFromDb)) {
+                        return rs.getInt("id");
+                    }
                 }
             }
         } catch (SQLException e) {

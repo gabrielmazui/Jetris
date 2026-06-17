@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
+import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import ui.service.Service;
 
@@ -27,6 +28,13 @@ public class ScreenManager {
         stage = primaryStage;
         scene = new Scene(firstScreen.getRoot());
         
+        scene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ESCAPE) {
+                if (CurrScreen != null) {
+                    CurrScreen.onEscapeKeyPressed();
+                }
+            }
+        });
         scene.getStylesheets().add(ScreenManager.class.getResource("/styles/app.css").toExternalForm());
         CurrScreen = firstScreen;
 

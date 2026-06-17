@@ -31,8 +31,8 @@ public class RegisterService {
                 TCPConnectionManager.send(clientIp, "REGISTER " + "0 " + callback + " FAIL Username_already_taken");
                 return;
             }
-
-            boolean success = DatabaseManager.createUser(username, password);
+            String hashedPassword = org.mindrot.jbcrypt.BCrypt.hashpw(password, org.mindrot.jbcrypt.BCrypt.gensalt());
+            boolean success = DatabaseManager.createUser(username, hashedPassword);
             if (success) {
                 TCPConnectionManager.send(clientIp, "REGISTER " + "0 " + callback + " SUCCESS");
             } else {

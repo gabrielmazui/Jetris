@@ -250,8 +250,11 @@ public class UserSearchScreen implements Screen {
         searchStatusLabel.setVisible(false);
 
         searchResultsBox = new VBox(10);
-        
+        searchResultsBox.setPadding(new Insets(10, 25, 10, 10));
+        searchResultsBox.setPickOnBounds(false);
+
         ScrollPane scrollPane = new ScrollPane(searchResultsBox);
+        scrollPane.setPickOnBounds(false);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle(SCROLL_PANE_STYLE);
         scrollPane.setPrefHeight(450);
@@ -329,6 +332,7 @@ public class UserSearchScreen implements Screen {
         HBox card = new HBox(20);
         card.setStyle(USER_CARD_STYLE);
         card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(10, 20, 10, 10));
 
         Circle userIcon = new Circle(15, Color.web("#2E2E38"));
         userIcon.setStroke(Color.web("#00ADB5"));
@@ -360,15 +364,19 @@ public class UserSearchScreen implements Screen {
 
         cardWrapper.setOnMouseEntered(e -> {
             if (root.isDisable()) return;
+            card.setViewOrder(-1.0);
+            cardWrapper.setViewOrder(-1.0);
             card.setStyle(USER_CARD_STYLE + "-fx-border-color: #00ADB5; -fx-background-color: #23232D;");
             viewProfileLabel.setStyle("-fx-text-fill: #00ADB5; -fx-font-size: 12px; -fx-font-weight: bold;");
             TranslateTransition tt = new TranslateTransition(Duration.millis(150), card);
-            tt.setToX(4);
+            tt.setToX(12);
             tt.play();
         });
-        
+
         cardWrapper.setOnMouseExited(e -> {
             if (root.isDisable()) return;
+            card.setViewOrder(0.0);
+            cardWrapper.setViewOrder(0.0);
             card.setStyle(USER_CARD_STYLE);
             viewProfileLabel.setStyle("-fx-text-fill: #6E6E77; -fx-font-size: 12px; -fx-font-weight: bold;");
             TranslateTransition tt = new TranslateTransition(Duration.millis(150), card);
