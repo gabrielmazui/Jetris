@@ -1,15 +1,10 @@
 package network.parser;
 
+import auth.service.*;
 import network.connection.TCPConnectionManager;
-import network.middleware.AddressMiddleware;
-import network.middleware.AuthMiddleware;
-import network.middleware.Middleware;
-import network.middleware.RateLimitMiddleware;
-import network.middleware.SessionMiddleware;
-import network.packets.LoginPacket;
-import network.packets.RegisterPacket;
-import auth.LoginController;
-import auth.RegisterController;
+import network.middleware.*;
+import network.packets.*;
+import service.ProfileService;
 
 public class TCPPacketParser {
 
@@ -68,9 +63,10 @@ public class TCPPacketParser {
                     String password = credentials.length > 1 ? credentials[1] : "";
             
                     LoginPacket loginPacket = new LoginPacket(code, callbackCode, username, password, credentials.length == 1 ? credentials[0] : "");
-                    LoginController.handle(loginPacket, clientIp);
+                    LoginService.handle(loginPacket, clientIp);
                 }
                 break;
+
             case "REGISTER":
                 System.out.println("[TCP] Received from IP: " + clientIp);
                 System.out.println("[TCP] ----> " + rawData);
@@ -80,9 +76,65 @@ public class TCPPacketParser {
                     String password = credentials.length > 1 ? credentials[1] : "";
                     
                     RegisterPacket registerPacket = new RegisterPacket(code, callbackCode, username, password);
-                    RegisterController.handle(registerPacket, clientIp);
+                    RegisterService.handle(registerPacket, clientIp);
                 }
                 break;
+
+            case "LOGOUT":
+                System.out.println("[TCP] Received from IP: " + clientIp);
+                System.out.println("[TCP] ----> " + rawData);
+                {
+                    String token = bodyRaw; 
+                    LogoutPack logoutPack = new LogoutPack(callbackCode, token);
+                    LogoutService.handle(logoutPack, clientIp);
+                }
+                break;
+
+            case "GETPROFILE":
+                {
+                    String[] profileArgs = bodyRaw.split(" ", 3);
+                    if (profileArgs.length < 2) {
+                        System.err.println("[TCP Parser] Invalid GETPROFILE body from " + clientIp);
+                        return;
+                    }
+                    String targetUsername = profileArgs[1];
+                    int page = profileArgs.length >= 3 ? Integer.parseInt(profileArgs[2]) : 1;
+
+                    if (code == 0) {
+                        UserPacket profilePacket = new UserPacket(targetUsername, code, callbackCode, 0);
+                        ProfileService.searchUsernamesHandle(profilePacket, clientIp);
+                    } else if (code == 1) {
+                        UserPacket profilePacket = new UserPacket(targetUsername, code, callbackCode, page);
+                        ProfileService.getUserProfileHandle(profilePacket, clientIp);
+                    }
+                }
+                break;
+
+            case "SETPFP":
+                System.out.println("[TCP] PFP Upload: " + clientIp);
+                {
+                    String[] pfpArgs = bodyRaw.split(" ", 3);
+                    if (pfpArgs.length < 3) {
+                        TCPConnectionManager.send(clientIp, "SETPFP 0 " + callbackCode + " INVALID_FORMAT");
+                        System.err.println("[TCP Parser] Formato SETPFP invalido " + clientIp);
+                        break;
+                    }
+                    String username = pfpArgs[1];
+                    String base64Image = pfpArgs[2];
+                    
+                    ProfileService.updatePfpHandle(username, base64Image, callbackCode, clientIp);
+                }
+                break;
+            case "DELETE_ACCOUNT":
+                System.out.println("[TCP] Delete account request from IP: " + clientIp);
+                System.out.println("[TCP] ----> " + rawData);
+                {
+                    String token = bodyRaw;
+                    DeleteAccountPacket deletePacket = new DeleteAccountPacket(code, callbackCode, token);
+                    DeleteService.handle(deletePacket, clientIp);
+                }
+                break;
+
             default:
                 System.err.println("[TCP Parser] Unknown Type (" + type + ") from " + clientIp);
                 break;

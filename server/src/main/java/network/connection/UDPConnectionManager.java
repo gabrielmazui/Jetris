@@ -30,7 +30,16 @@ public class UDPConnectionManager {
             InetAddress address = InetAddress.getByName(clientIp);
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, port);
             serverSocket.send(packet);
-            System.out.println("[UDP] Sent: [" + message + "] ClientIP: [" + clientIp + "]" );
+            if(!message.equals("PONG")){
+                String preview = message.length() > 100
+                        ? message.substring(0, 100) + "..."
+                        : message;
+
+                System.out.println(
+                    "[UDP] Sent (" + message.length() + " chars): ["
+                    + preview + "] ClientIP: [" + clientIp + "]"
+                );
+            }
         } catch (IOException e) {
             System.err.println("[UDP Send Error - Direct] " + e.getMessage());
         }

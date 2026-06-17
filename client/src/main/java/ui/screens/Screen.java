@@ -1,31 +1,51 @@
 package ui.screens;
 
 import core.ScreenManager;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.ParallelTransition;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.effect.GaussianBlur;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
+
 import network.NetworkContext;
 import network.NetworkManager;
 
 public interface Screen {
     Parent getRoot();
     
-    public default Boolean isPingDisplayed(){
+    default Boolean isPingDisplayed(){
         return false;
     }
 
-    public default void UpdatePing(int ms){}
+    default void UpdatePing(int ms){}
+    default void onMainButtonClick(){}
 
-    public default void EnableRetryMenu() {
+    public static void transitionToScreen(Runnable onFinished, BorderPane mainLayout) {
+        FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.4), mainLayout);
+        fadeOut.setToValue(0.0);
+
+        TranslateTransition moveDown = new TranslateTransition(Duration.seconds(0.4), mainLayout);
+        moveDown.setToY(20.0);
+        moveDown.setInterpolator(Interpolator.EASE_IN);
+
+        ParallelTransition pt = new ParallelTransition(fadeOut, moveDown);
+        pt.setOnFinished(e -> onFinished.run());
+        pt.play();
+    }
+
+    default void EnableRetryMenu() {
         if (!ScreenManager.retryMenu) {
             ScreenManager.retryMenu = true;
 
@@ -122,90 +142,4 @@ public interface Screen {
         }
     }
 
-    public default void EnableEscMenu() {
-        if (!ScreenManager.escMenu) {
-            ScreenManager.escMenu = true;
-
-            Platform.runLater(() -> {
-                Pane container = null;
-                if (getRoot().getParent() instanceof Pane) {
-                    container = (Pane) getRoot().getParent();
-                } else {
-                    Scene scene = getRoot().getScene();
-                    if (scene != null && scene.getRoot() instanceof Pane) {
-                        container = (Pane) scene.getRoot();
-                    }
-                }
-
-                if (container != null) {
-                    StackPane overlay = new StackPane();
-                    overlay.setId("escOverlay");
-                    
-                    Pane blurPane = new Pane();
-                    blurPane.setStyle("-fx-background-color: rgba(0, 0, 0, 0.7);");
-                    blurPane.setEffect(new GaussianBlur(45));
-
-                    overlay.setFocusTraversable(true);
-                    overlay.setOnMouseClicked(event -> { overlay.requestFocus(); event.consume(); });
-                    overlay.setOnMousePressed(event -> { overlay.requestFocus(); event.consume(); });
-                    overlay.setOnKeyPressed(event -> event.consume());
-                    overlay.focusedProperty().addListener((obs, oldVal, newVal) -> {
-                        if (!newVal && ScreenManager.escMenu) {
-                            Platform.runLater(overlay::requestFocus);
-                        }
-                    });
-
-                    VBox content = new VBox(15);
-                    content.setAlignment(Pos.CENTER);
-
-                    if (container instanceof Region) {
-                        Region region = (Region) container;
-                        overlay.prefWidthProperty().bind(region.widthProperty());
-                        overlay.prefHeightProperty().bind(region.heightProperty());
-                        blurPane.prefWidthProperty().bind(region.widthProperty());
-                        blurPane.prefHeightProperty().bind(region.heightProperty());
-                    }
-
-                    Button btnSettings = new Button("Settings");
-                    btnSettings.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 22px; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-family: 'Arial';");
-                    
-                    Button btnLeave = new Button("Leave");
-                    btnLeave.setStyle("-fx-background-color: transparent; -fx-text-fill: #ff3333; -fx-font-size: 22px; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-family: 'Arial';");
-
-                    btnSettings.setOnAction(e -> {
-                    });
-
-                    btnLeave.setOnAction(e -> {
-                    });
-
-                    content.getChildren().addAll(btnSettings, btnLeave);
-                    overlay.getChildren().addAll(blurPane, content);
-                    container.getChildren().add(overlay);
-                    overlay.requestFocus();
-                }
-            });
-        }
-    }
-
-    public default void DisableEscMenu() {
-        if (ScreenManager.escMenu) {
-            ScreenManager.escMenu = false;
-
-            Platform.runLater(() -> {
-                Pane container = null;
-                if (getRoot().getParent() instanceof Pane) {
-                    container = (Pane) getRoot().getParent();
-                } else {
-                    Scene scene = getRoot().getScene();
-                    if (scene != null && scene.getRoot() instanceof Pane) {
-                        container = (Pane) scene.getRoot();
-                    }
-                }
-
-                if (container != null) {
-                    container.getChildren().removeIf(node -> "escOverlay".equals(node.getId()));
-                }
-            });
-        }
-    }
 }

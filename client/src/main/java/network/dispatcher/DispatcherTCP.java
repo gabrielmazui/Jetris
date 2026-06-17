@@ -20,7 +20,7 @@ public class DispatcherTCP implements Runnable {
                 if (packet instanceof loginPacket) {
                     loginPacket login = (loginPacket) packet;
                     if (login.success) {
-                        callback.onSuccess(login.AUTH);
+                        callback.onSuccess(login.AUTH + " " + login.pfpBase64);
                     } else {
                         callback.onFailure(login.body);
                     }
@@ -30,6 +30,43 @@ public class DispatcherTCP implements Runnable {
                         callback.onSuccess(register.body);
                     } else {
                         callback.onFailure(register.body);
+                    }
+                } else if (packet instanceof logoutPacket) {
+                    callback.onSuccess("SUCCESS");
+                } else if (packet instanceof getUserPacket) {
+                    getUserPacket getUser = (getUserPacket) packet;
+                    if (getUser.code == 0) {
+                        callback.onSuccess(getUser.quant + " " + getUser.users);
+                    } else if (getUser.code == 1) {
+                        if (getUser.username == null) {
+                            callback.onFailure("EMPTY");
+                        } else {
+                            String raw = getUser.username + " " + getUser.pfpBase64 + " "
+                                + getUser.wins + " " + getUser.losses + " "
+                                + getUser.totalMatches + " " + getUser.totalPages + " "
+                                + getUser.currentPage + " " + getUser.matchCount
+                                + (getUser.matchesRaw != null && !getUser.matchesRaw.isBlank()
+                                    ? " " + getUser.matchesRaw : "");
+                            callback.onSuccess(raw);
+                        }
+                    }
+                }else if (packet instanceof setPfpPacket) {
+                    setPfpPacket setpfp = (setPfpPacket) packet;
+                    if(setpfp.success){
+                        callback.onSuccess(setpfp.body);
+                    }else{
+                        if(setpfp.error.length() > 0){
+                            callback.onFailure(setpfp.error);
+                        }else{
+                            callback.onFailure("error");
+                        }
+                    }
+                } else if (packet instanceof deleteAccountPacket) {
+                    deleteAccountPacket del = (deleteAccountPacket) packet;
+                    if (del.success) {
+                        callback.onSuccess("SUCCESS");
+                    } else {
+                        callback.onFailure(del.error.length() > 0 ? del.error : "Unknown error");
                     }
                 }
 

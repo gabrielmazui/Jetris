@@ -2,6 +2,7 @@ package network.parser;
 
 import network.connection.UDPConnectionManager;
 import network.middleware.AddressMiddleware;
+import network.middleware.AuthMiddleware;
 import network.middleware.Middleware;
 import network.middleware.RateLimitMiddleware;
 import network.middleware.SessionMiddleware;
@@ -10,7 +11,8 @@ public class UDPPacketParser {
 
     private static final Middleware chain = Middleware.link(
         new AddressMiddleware(),
-        new RateLimitMiddleware(10),
+        new RateLimitMiddleware(200),
+        new AuthMiddleware(),
         new SessionMiddleware()
     );
 

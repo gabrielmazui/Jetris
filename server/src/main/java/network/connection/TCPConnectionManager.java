@@ -21,7 +21,17 @@ public class TCPConnectionManager {
         PrintWriter writer = clientWriters.get(clientIp);
         if (writer != null) {
             writer.println(message);
-            System.out.println("[TCP] Sent: [" + message + "] ClientIP: [" + clientIp + "]" );
+
+            if (!message.equals("PONG")) {
+                String preview = message.length() > 100
+                        ? message.substring(0, 100) + "..."
+                        : message;
+
+                System.out.println(
+                    "[TCP] Sent (" + message.length() + " chars): ["
+                    + preview + "] ClientIP: [" + clientIp + "]"
+                );
+            }
         }
     }
 }

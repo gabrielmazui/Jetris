@@ -1,0 +1,35 @@
+.scroll-bar:vertical,
+.scroll-bar:horizontal {
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+    visibility: hidden;
+}
+
+.scroll-bar .thumb,
+.scroll-bar .track,
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button,
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+    visibility: hidden;
+}
+
+.root {
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.node {
+    -fx-background-insets: 0;
+}
+
+.root {
+    -fx-background-insets: 0;
+    -fx-content-display: clip;
+}
+
+.pane, .stack-pane, .vbox, .border-pane {
+    -fx-background-insets: 0;
+}

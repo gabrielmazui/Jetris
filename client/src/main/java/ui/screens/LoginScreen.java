@@ -20,11 +20,11 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
+import ui.service.LoginService;
 import javafx.scene.control.TextFormatter;
 import java.util.function.UnaryOperator;
 
 import core.ScreenManager;
-import ui.controllers.LoginController;
 
 public class LoginScreen implements Screen {
 
@@ -87,7 +87,7 @@ public class LoginScreen implements Screen {
     """;
 
     public LoginScreen() {
-        ScreenManager.controller = new LoginController();
+        ScreenManager.controller = new LoginService();
         root = new StackPane();
         root.setStyle("-fx-background-color: #0F0F14;");
         root.setAlignment(Pos.CENTER);
@@ -286,7 +286,7 @@ public class LoginScreen implements Screen {
         limparErros();
         setInterfaceBloqueada(true, loginBox);
         Thread.startVirtualThread(() -> {
-            String ans = LoginController.login(username, password);
+            String ans = LoginService.login(username, password);
             Platform.runLater(() -> {
                 if ("SUCCESS".equals(ans)) animarTransicaoParaMainScreen();
                 else { setInterfaceBloqueada(false, loginBox); dispararFeedbackErro(loginErrorLabel, loginBox, ans); }
@@ -298,7 +298,7 @@ public class LoginScreen implements Screen {
         limparErros();
         setInterfaceBloqueada(true, registerBox);
         Thread.startVirtualThread(() -> {
-            String ans = LoginController.register(username, password);
+            String ans = LoginService.register(username, password);
             Platform.runLater(() -> {
                 setInterfaceBloqueada(false, registerBox);
                 if ("SUCCESS".equals(ans)) alternarParaLogin();

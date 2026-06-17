@@ -1,6 +1,6 @@
-package ui.controllers;
+package ui.service;
 
-public interface Controller{
+public interface Service{
     public static void escHandler(){
         // show esc menu (exceptions main screen login and disconnect)
     }

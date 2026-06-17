@@ -5,15 +5,14 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import ui.service.Service;
 
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.HWND;
 
-import ui.controllers.Controller;
-
 public class ScreenManager {
 
-    public static Controller controller;
+    public static Service controller;
     public static ui.screens.Screen CurrScreen;
 
     private static Stage stage;
@@ -23,11 +22,12 @@ public class ScreenManager {
     private static double yOffset;
 
     volatile static public Boolean retryMenu = true;
-    volatile static public Boolean escMenu = false;
 
     public static void init(Stage primaryStage, ui.screens.Screen firstScreen) {
         stage = primaryStage;
         scene = new Scene(firstScreen.getRoot());
+        
+        scene.getStylesheets().add(ScreenManager.class.getResource("/styles/app.css").toExternalForm());
         CurrScreen = firstScreen;
 
         String windowTitle = "Jetris";

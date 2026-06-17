@@ -24,7 +24,7 @@ import network.ConnectionState;
 import core.ScreenManager;
 import network.NetworkContext;
 import network.NetworkManager;
-import ui.controllers.LoginController;
+import ui.service.LoginService;
 import config.UserSession;
 
 public class LoadingScreen implements Screen {
@@ -197,7 +197,7 @@ public class LoadingScreen implements Screen {
         Thread.startVirtualThread(() ->{
             UserSession.carregarDoArquivo();
             Screen screen = new LoginScreen();
-            if(LoginController.verifyTokenCache()){
+            if(LoginService.verifyTokenCache()){
                 screen = new MainScreen();
             }
             final Screen screen2 = screen;
@@ -297,9 +297,4 @@ public class LoadingScreen implements Screen {
     public Parent getRoot() {
         return root;
     }
-
-    @Override
-    public void EnableRetryMenu(){}
-    @Override
-    public void DisableRetryMenu(){}
 }

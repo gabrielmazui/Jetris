@@ -91,6 +91,9 @@ public class NetworkManager {
         try{
             while(true){
                 Thread.sleep(1000);
+                if(ScreenManager.CurrScreen == null){
+                    continue;
+                }
                 if(NetworkContext.udpState != ConnectionState.CONNECTED || NetworkContext.tcpState != ConnectionState.CONNECTED){
                     ScreenManager.CurrScreen.UpdatePing(-1);
                 }
