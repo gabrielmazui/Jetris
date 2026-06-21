@@ -59,6 +59,20 @@ SpectatorScreen    UDP ──────────▶  Services (login, match
 
 ---
 
+## Interface
+
+### Login Screen
+![Login Screen](docs/images/login.png)
+
+### Main Menu
+![Main Menu](docs/images/mainscreen.png)
+
+### Gameplay
+![Gameplay](docs/images/gameplay.png)
+
+### Spectator Mode
+![Spectator Mode](docs/images/spectator.png)
+
 ## Quick Start
 
 ### Prerequisites
