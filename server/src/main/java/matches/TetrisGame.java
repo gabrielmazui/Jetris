@@ -12,43 +12,43 @@ final class TetrisGame {
     private static final long GRAVITY_NANOS = 650_000_000L;
 
     private static final boolean[][][] BASE_SHAPES = new boolean[][][] {
-        { // I
+        {
             {false, false, false, false},
             {true,  true,  true,  true },
             {false, false, false, false},
             {false, false, false, false}
         },
-        { // O
+        {
             {false, true,  true,  false},
             {false, true,  true,  false},
             {false, false, false, false},
             {false, false, false, false}
         },
-        { // T
+        {
             {false, true,  false, false},
             {true,  true,  true,  false},
             {false, false, false, false},
             {false, false, false, false}
         },
-        { // S
+        {
             {false, true,  true,  false},
             {true,  true,  false, false},
             {false, false, false, false},
             {false, false, false, false}
         },
-        { // Z
+        {
             {true,  true,  false, false},
             {false, true,  true,  false},
             {false, false, false, false},
             {false, false, false, false}
         },
-        { // J
+        {
             {true,  false, false, false},
             {true,  true,  true,  false},
             {false, false, false, false},
             {false, false, false, false}
         },
-        { // L
+        {
             {false, false, true,  false},
             {true,  true,  true,  false},
             {false, false, false, false},
@@ -247,7 +247,7 @@ final class TetrisGame {
     }
 
     private boolean tryRotate(PlayerState state) {
-        if (state.currentPiece == 1) return false; // O-piece has no rotation
+        if (state.currentPiece == 1) return false;
         int nextRotation = (state.rotation + 1) % 4;
         int[] kicks = new int[] {0, -1, 1, -2, 2};
         for (int kick : kicks) {

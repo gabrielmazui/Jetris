@@ -30,6 +30,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -61,13 +62,13 @@ public class GameScreen implements Screen {
     private static final int ARR_MS = 33;
 
     private static final Color[] PIECE_COLORS = {
-        Color.web("#00ADB5"), // I
-        Color.web("#FFD166"), // O
-        Color.web("#9B5DE5"), // T
-        Color.web("#00E676"), // S
-        Color.web("#FF4A4A"), // Z
-        Color.web("#3A86FF"), // J
-        Color.web("#F8961E")  // L
+        Color.web("#00ADB5"),
+        Color.web("#FFD166"),
+        Color.web("#9B5DE5"),
+        Color.web("#00E676"),
+        Color.web("#FF4A4A"),
+        Color.web("#3A86FF"),
+        Color.web("#F8961E")
     };
 
     private static final boolean[][][] PIECE_SHAPES = {
@@ -153,8 +154,36 @@ public class GameScreen implements Screen {
         root.getChildren().add(mainLayout);
         root.setFocusTraversable(true);
         root.setOnMouseClicked(e -> root.requestFocus());
-        root.setOnKeyPressed(e -> onKeyDown(e.getCode()));
-        root.setOnKeyReleased(e -> onKeyUp(e.getCode()));
+
+        root.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (chatInputField != null && chatInputField.isFocused()) return;
+            KeyCode code = e.getCode();
+            if (code == KeyCode.LEFT || code == KeyCode.RIGHT || code == KeyCode.DOWN
+                    || code == KeyCode.UP || code == KeyCode.SPACE || code == KeyCode.R) {
+                e.consume();
+            }
+            onKeyDown(code);
+        });
+        root.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
+            if (chatInputField != null && chatInputField.isFocused()) return;
+            onKeyUp(e.getCode());
+        });
+
+        root.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.windowProperty().addListener((wObs, oldWin, newWin) -> {
+                    if (newWin != null) newWin.focusedProperty().addListener((fObs, wasF, isF) -> {
+                        if (!isF) { pressedKeys.clear(); stopDAS(); }
+                    });
+                });
+                if (newScene.getWindow() != null) {
+                    newScene.getWindow().focusedProperty().addListener((fObs, wasF, isF) -> {
+                        if (!isF) { pressedKeys.clear(); stopDAS(); }
+                    });
+                }
+            }
+        });
+
         Platform.runLater(root::requestFocus);
 
         countdownOverlay = buildCountdownOverlay();
@@ -259,8 +288,10 @@ public class GameScreen implements Screen {
         VBox opponentArea = buildOpponentBoardArea();
 
         VBox nextPiecePanel = buildStandaloneNextPiecePanel(nextPieceCells);
-        HBox boardWithNext = new HBox(10, boardArea, nextPiecePanel);
-        boardWithNext.setAlignment(Pos.TOP_CENTER);
+        
+        HBox boardWithNext = new HBox(16, boardArea, nextPiecePanel);
+        boardWithNext.setAlignment(Pos.CENTER);
+        boardWithNext.setFillHeight(false);
 
         gameArea.getChildren().addAll(chatArea, boardWithNext, opponentArea);
         layout.getChildren().add(gameArea);
@@ -364,6 +395,7 @@ public class GameScreen implements Screen {
         VBox chat = new VBox(10);
         chat.setPrefWidth(280);
         chat.setMaxWidth(280);
+        chat.setMaxHeight(Double.MAX_VALUE);
         chat.setPadding(new Insets(12));
         chat.setStyle("-fx-background-color: #14141C; -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2E2E38; -fx-border-width: 1;");
 
@@ -430,6 +462,7 @@ public class GameScreen implements Screen {
     private VBox buildOpponentBoardArea() {
         VBox card = new VBox(8);
         card.setAlignment(Pos.CENTER);
+        card.setMaxHeight(Region.USE_PREF_SIZE);
         card.setPadding(new Insets(12));
         card.setStyle("-fx-background-color: #14141C; -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2E2E38; -fx-border-width: 1;");
 
@@ -484,6 +517,7 @@ public class GameScreen implements Screen {
     private VBox buildSpectatorBoardCard(String role, String nameText, Color accent, boolean firstBoard) {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
+        card.setMaxHeight(Region.USE_PREF_SIZE);
         card.setPadding(new Insets(12));
         card.setPrefWidth(318);
         card.setStyle("-fx-background-color: #14141C; -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2E2E38; -fx-border-width: 1;");
@@ -536,13 +570,14 @@ public class GameScreen implements Screen {
     }
 
     private VBox buildStandaloneNextPiecePanel(List<Rectangle> cells) {
-        VBox panel = new VBox(8);
+        VBox panel = new VBox(10);
         panel.setAlignment(Pos.CENTER);
-        panel.setPadding(new Insets(12, 10, 12, 10));
+        panel.setMaxHeight(Region.USE_PREF_SIZE);
+        panel.setPadding(new Insets(16, 24, 16, 24));
         panel.setStyle("-fx-background-color: #14141C; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #2E2E38; -fx-border-width: 1;");
 
         Label label = new Label("NEXT");
-        label.setStyle("-fx-text-fill: #6E6E77; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+        label.setStyle("-fx-text-fill: #6E6E77; -fx-font-size: 11px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
 
         panel.getChildren().addAll(label, buildNextPieceGrid(14, cells));
         return panel;
@@ -861,13 +896,13 @@ public class GameScreen implements Screen {
         MatchListService.fetchMatchInfo(matchCode, new MatchListService.MatchListCallback() {
             @Override
             public void onSuccess(java.util.List<MatchListService.LiveMatch> matches) {
-                if (matches == null || matches.isEmpty()) return; // details are cosmetic — don't abort the match
+                if (matches == null || matches.isEmpty()) return;
                 MatchListService.LiveMatch finalSelected = matches.get(0);
                 Platform.runLater(() -> applyMatchDetails(finalSelected));
             }
 
             @Override
-            public void onFailure(String reason) { /* details fetch failed — not fatal, match continues */ }
+            public void onFailure(String reason) { }
         });
     }
 
@@ -999,7 +1034,6 @@ public class GameScreen implements Screen {
             MatchChatService.send(matchCode, safe);
             chatInputField.clear();
         } catch (Exception e) {
-            // send failure silently ignored
         }
     }
 

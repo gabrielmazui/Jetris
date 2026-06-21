@@ -394,7 +394,6 @@ public class ProfileScreen implements Screen {
         card.setAlignment(Pos.CENTER_LEFT);
         card.setMaxWidth(Double.MAX_VALUE);
 
-        // colored left accent bar
         Region accentBar = new Region();
         accentBar.setMinWidth(4);
         accentBar.setMaxWidth(4);
@@ -406,7 +405,6 @@ public class ProfileScreen implements Screen {
         inner.setPadding(new Insets(12, 14, 12, 14));
         HBox.setHgrow(inner, Priority.ALWAYS);
 
-        // WIN / LOSS badge
         Label badge = new Label(won ? "WIN" : "LOSS");
         badge.setMinWidth(46);
         badge.setAlignment(Pos.CENTER);
@@ -414,7 +412,6 @@ public class ProfileScreen implements Screen {
                 + "-fx-font-weight: 800; -fx-background-color: " + accentDim + "; "
                 + "-fx-background-radius: 6; -fx-padding: 4 8 4 8; -fx-letter-spacing: 1px;");
 
-        // matchup
         VBox matchInfo = new VBox(3);
         String me = config.UserSession.getUsername();
         boolean meIsP1 = me != null && me.equalsIgnoreCase(p1);
@@ -430,7 +427,6 @@ public class ProfileScreen implements Screen {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // date/time block
         VBox timeBox = new VBox(2);
         timeBox.setAlignment(Pos.CENTER_RIGHT);
         if (matchDateMs > 0) {

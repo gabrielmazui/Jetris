@@ -160,7 +160,6 @@ public class UserSearchScreen implements Screen {
         pfp.setStroke(Color.web("#00ADB5"));
         pfp.setStrokeWidth(2);
         
-        // Carrega a foto do usuário logado na barra do topo de forma segura
         byte[] pfpBytes = UserSession.getPfp();
 
         if (pfpBytes != null) {
