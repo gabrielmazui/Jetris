@@ -60,6 +60,26 @@ public class GameScreen implements Screen {
     private static final int DAS_MS = 100;
     private static final int ARR_MS = 33;
 
+    private static final Color[] PIECE_COLORS = {
+        Color.web("#00ADB5"), // I
+        Color.web("#FFD166"), // O
+        Color.web("#9B5DE5"), // T
+        Color.web("#00E676"), // S
+        Color.web("#FF4A4A"), // Z
+        Color.web("#3A86FF"), // J
+        Color.web("#F8961E")  // L
+    };
+
+    private static final boolean[][][] PIECE_SHAPES = {
+        {{false,false,false,false},{true,true,true,true},{false,false,false,false},{false,false,false,false}},
+        {{false,true,true,false},{false,true,true,false},{false,false,false,false},{false,false,false,false}},
+        {{false,true,false,false},{true,true,true,false},{false,false,false,false},{false,false,false,false}},
+        {{false,true,true,false},{true,true,false,false},{false,false,false,false},{false,false,false,false}},
+        {{true,true,false,false},{false,true,true,false},{false,false,false,false},{false,false,false,false}},
+        {{true,false,false,false},{true,true,true,false},{false,false,false,false},{false,false,false,false}},
+        {{false,false,true,false},{true,true,true,false},{false,false,false,false},{false,false,false,false}}
+    };
+
     private final StackPane root;
     private final BorderPane mainLayout;
     private final String matchCode;
@@ -78,6 +98,8 @@ public class GameScreen implements Screen {
     private GridPane opponentBoardGrid;
     private final List<Rectangle> mainBoardCells = new ArrayList<>();
     private final List<Rectangle> opponentBoardCells = new ArrayList<>();
+    private final List<Rectangle> nextPieceCells = new ArrayList<>();
+    private final List<Rectangle> opponentNextPieceCells = new ArrayList<>();
     private StackPane pauseOverlay;
     private Button leaveButton;
     private Circle player1Avatar;
@@ -236,7 +258,11 @@ public class GameScreen implements Screen {
         boardArea = buildMainBoardArea();
         VBox opponentArea = buildOpponentBoardArea();
 
-        gameArea.getChildren().addAll(chatArea, boardArea, opponentArea);
+        VBox nextPiecePanel = buildStandaloneNextPiecePanel(nextPieceCells);
+        HBox boardWithNext = new HBox(10, boardArea, nextPiecePanel);
+        boardWithNext.setAlignment(Pos.CENTER_TOP);
+
+        gameArea.getChildren().addAll(chatArea, boardWithNext, opponentArea);
         layout.getChildren().add(gameArea);
 
         ScrollPane scrollPane = new ScrollPane(layout);
@@ -423,6 +449,8 @@ public class GameScreen implements Screen {
 
         header.getChildren().addAll(board2Avatar, labels);
 
+        HBox nextBox = buildInlineNextPiecePanel(opponentNextPieceCells);
+
         StackPane boardFrame = new StackPane();
         boardFrame.setMinSize(220, 440);
         boardFrame.setMaxSize(220, 440);
@@ -433,7 +461,7 @@ public class GameScreen implements Screen {
         boardFrame.getChildren().add(smallGrid);
         boardFrame.setClip(createBoardClip(220, 440, 10));
 
-        card.getChildren().addAll(header, boardFrame);
+        card.getChildren().addAll(header, nextBox, boardFrame);
         return card;
     }
 
@@ -476,6 +504,9 @@ public class GameScreen implements Screen {
 
         header.getChildren().addAll(avatar, labelsBox);
 
+        List<Rectangle> nextCells = firstBoard ? nextPieceCells : opponentNextPieceCells;
+        HBox nextBox = buildInlineNextPiecePanel(nextCells);
+
         StackPane boardFrame = new StackPane();
         boardFrame.setMinSize(300, 600);
         boardFrame.setMaxSize(300, 600);
@@ -493,7 +524,7 @@ public class GameScreen implements Screen {
             board2Avatar = avatar;
         }
 
-        card.getChildren().addAll(header, boardFrame);
+        card.getChildren().addAll(header, nextBox, boardFrame);
         return card;
     }
 
@@ -502,6 +533,75 @@ public class GameScreen implements Screen {
             (int) Math.round(color.getRed() * 255),
             (int) Math.round(color.getGreen() * 255),
             (int) Math.round(color.getBlue() * 255));
+    }
+
+    private VBox buildStandaloneNextPiecePanel(List<Rectangle> cells) {
+        VBox panel = new VBox(8);
+        panel.setAlignment(Pos.CENTER);
+        panel.setPadding(new Insets(12, 10, 12, 10));
+        panel.setStyle("-fx-background-color: #14141C; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #2E2E38; -fx-border-width: 1;");
+
+        Label label = new Label("NEXT");
+        label.setStyle("-fx-text-fill: #6E6E77; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+
+        panel.getChildren().addAll(label, buildNextPieceGrid(14, cells));
+        return panel;
+    }
+
+    private HBox buildInlineNextPiecePanel(List<Rectangle> cells) {
+        HBox box = new HBox(8);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(4, 0, 4, 0));
+
+        Label label = new Label("NEXT");
+        label.setStyle("-fx-text-fill: #6E6E77; -fx-font-size: 9px; -fx-font-weight: bold; -fx-letter-spacing: 1px;");
+
+        box.getChildren().addAll(label, buildNextPieceGrid(10, cells));
+        return box;
+    }
+
+    private GridPane buildNextPieceGrid(double cellSize, List<Rectangle> cells) {
+        GridPane grid = new GridPane();
+        grid.setHgap(1);
+        grid.setVgap(1);
+        grid.setAlignment(Pos.CENTER);
+
+        for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+                Rectangle cell = new Rectangle(cellSize, cellSize);
+                cell.setArcWidth(2);
+                cell.setArcHeight(2);
+                cell.setFill(Color.web("#1A1A22"));
+                cell.setStroke(Color.web("#2E2E38"));
+                cell.setStrokeWidth(0.5);
+                cells.add(cell);
+                grid.add(cell, c, r);
+            }
+        }
+        return grid;
+    }
+
+    private void renderNextPiece(List<Rectangle> cells, String pieceCodeStr) {
+        if (cells == null || cells.size() < 16) return;
+        int code = parseIntSafe(pieceCodeStr);
+        for (Rectangle cell : cells) {
+            cell.setFill(Color.web("#1A1A22"));
+            cell.setStroke(Color.web("#2E2E38"));
+        }
+        if (code < 1 || code > PIECE_SHAPES.length) return;
+        boolean[][] shape = PIECE_SHAPES[code - 1];
+        Color color = PIECE_COLORS[code - 1];
+        for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+                if (r < shape.length && c < shape[r].length && shape[r][c]) {
+                    int idx = r * 4 + c;
+                    if (idx < cells.size()) {
+                        cells.get(idx).setFill(color);
+                        cells.get(idx).setStroke(color.darker());
+                    }
+                }
+            }
+        }
     }
 
     private GridPane buildBoardGrid(double cellSize, List<Rectangle> cellStore) {
@@ -682,11 +782,13 @@ public class GameScreen implements Screen {
         String[] parts = payload.split("\\|", 11);
         if (parts.length < 11) return;
 
-        String round = parts[0];
-        String wins1 = parts[1];
-        String wins2 = parts[2];
-        String board1 = parts[5];
-        String board2 = parts[6];
+        String round    = parts[0];
+        String wins1    = parts[1];
+        String wins2    = parts[2];
+        String board1   = parts[5];
+        String board2   = parts[6];
+        String next1    = parts[7];
+        String next2    = parts[8];
 
         updateMatchState("Round " + round, "#00E676");
         if (boardStatusLabel != null) boardStatusLabel.setVisible(false);
@@ -696,12 +798,18 @@ public class GameScreen implements Screen {
         if (spectatorMode) {
             renderBoard(mainBoardCells, board1);
             renderBoard(opponentBoardCells, board2);
+            renderNextPiece(nextPieceCells, next1);
+            renderNextPiece(opponentNextPieceCells, next2);
         } else if (isPlayer2) {
             renderBoard(mainBoardCells, board2);
             renderBoard(opponentBoardCells, board1);
+            renderNextPiece(nextPieceCells, next2);
+            renderNextPiece(opponentNextPieceCells, next1);
         } else {
             renderBoard(mainBoardCells, board1);
             renderBoard(opponentBoardCells, board2);
+            renderNextPiece(nextPieceCells, next1);
+            renderNextPiece(opponentNextPieceCells, next2);
         }
     }
 
