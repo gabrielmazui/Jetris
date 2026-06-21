@@ -260,7 +260,7 @@ public class GameScreen implements Screen {
 
         VBox nextPiecePanel = buildStandaloneNextPiecePanel(nextPieceCells);
         HBox boardWithNext = new HBox(10, boardArea, nextPiecePanel);
-        boardWithNext.setAlignment(Pos.CENTER_TOP);
+        boardWithNext.setAlignment(Pos.TOP_CENTER);
 
         gameArea.getChildren().addAll(chatArea, boardWithNext, opponentArea);
         layout.getChildren().add(gameArea);
