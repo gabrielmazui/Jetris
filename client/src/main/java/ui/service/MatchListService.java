@@ -52,8 +52,8 @@ public class MatchListService {
         NetworkManager.sendTCP(send, new NetworkCallback(callbackId) {
             @Override
             public void onSuccess(String resposta) {
-                LiveMatch match = parseSingleMatch(resposta);
-                callback.onSuccess(match == null ? Collections.emptyList() : Collections.singletonList(match));
+                List<LiveMatch> matches = parseMatches(resposta);
+                callback.onSuccess(matches);
             }
 
             @Override
@@ -95,7 +95,7 @@ public class MatchListService {
         }
 
         String entriesRaw = parts[1];
-        String[] entries = entriesRaw.split("\\|\\|");
+        String[] entries = entriesRaw.split("\\|\\|\\|");
         for (String entry : entries) {
             String[] fields = entry.split("\\|", 10);
             if (fields.length < 7) {

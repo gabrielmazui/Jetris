@@ -104,6 +104,7 @@ public class GameScreen implements Screen {
     private Label p2ScoreLabel;
     private ParallelTransition currentCountdownAnim;
     private FadeTransition dismissFadeAnim;
+    private int lastDisplayedCountdownNumber = -1;
 
     private final Set<KeyCode> pressedKeys = new HashSet<>();
     private Timeline dasTimer;
@@ -617,6 +618,7 @@ public class GameScreen implements Screen {
         String raw = payload == null ? "" : payload.trim();
 
         if ("ROUND_START".equals(normalizedState)) {
+            lastDisplayedCountdownNumber = -1;
             String[] parts = raw.split("\\|", 2);
             String round = parts.length > 0 ? parts[0] : "1";
             String seconds = parts.length > 1 ? parts[1] : "5";
@@ -740,21 +742,16 @@ public class GameScreen implements Screen {
     }
 
     private void loadMatchDetails() {
-        MatchListService.fetchLiveMatches(matchCode, new MatchListService.MatchListCallback() {
+        MatchListService.fetchMatchInfo(matchCode, new MatchListService.MatchListCallback() {
             @Override
             public void onSuccess(java.util.List<MatchListService.LiveMatch> matches) {
-                if (matches == null || matches.isEmpty()) { switchToLoading(); return; }
-                MatchListService.LiveMatch selected = null;
-                for (MatchListService.LiveMatch match : matches) {
-                    if (matchCode.equalsIgnoreCase(match.code)) { selected = match; break; }
-                }
-                if (selected == null) selected = matches.get(0);
-                MatchListService.LiveMatch finalSelected = selected;
+                if (matches == null || matches.isEmpty()) return; // details are cosmetic — don't abort the match
+                MatchListService.LiveMatch finalSelected = matches.get(0);
                 Platform.runLater(() -> applyMatchDetails(finalSelected));
             }
 
             @Override
-            public void onFailure(String reason) { switchToLoading(); }
+            public void onFailure(String reason) { /* details fetch failed — not fatal, match continues */ }
         });
     }
 
@@ -944,6 +941,9 @@ public class GameScreen implements Screen {
     }
 
     private void animateCountdownNumber(int secondsLeft) {
+        if (secondsLeft == lastDisplayedCountdownNumber) return;
+        lastDisplayedCountdownNumber = secondsLeft;
+
         if (currentCountdownAnim != null) {
             currentCountdownAnim.stop();
             currentCountdownAnim = null;

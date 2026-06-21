@@ -302,7 +302,7 @@ public class MatchManager {
             entries.add(code + "|" + safeValue(player1) + "|" + safeValue(player1Pfp) + "|" + safeValue(player2) + "|" + safeValue(player2Pfp) + "|" + state + "|" + spectators + "|" + safeInt(session.getPlayer1()) + "|" + safeInt(session.getPlayer2()) + "|" + session.getStartTimeMillis());
         }
 
-        return entries.size() + (entries.isEmpty() ? "" : " " + String.join("||", entries));
+        return entries.size() + (entries.isEmpty() ? "" : " " + String.join("|||", entries));
     }
 
     public static String buildMatchInfoPayload(String matchCode) {

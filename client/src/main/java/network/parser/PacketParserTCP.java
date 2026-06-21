@@ -161,7 +161,12 @@ public class PacketParserTCP implements Runnable {
                             String status = body.length > 0 ? body[0] : "";
                             boolean isSuccess = "SUCCESS".equalsIgnoreCase(status);
 
-                            if (code == 5 || code == 7) {
+                            if (code == 5) {
+                                String payload = isSuccess && bodyRaw.length() > status.length() + 1
+                                        ? bodyRaw.substring(status.length() + 1).trim()
+                                        : "";
+                                packet = new matchListPacket(code, payload, callbackCode, isSuccess, payload);
+                            } else if (code == 7) {
                                 String payload = body.length > 1 ? body[1] : "";
                                 packet = new matchListPacket(code, payload, callbackCode, isSuccess, payload);
                             } else if (isSuccess) {

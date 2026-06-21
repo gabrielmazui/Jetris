@@ -63,7 +63,7 @@ public class DispatcherTCP implements Runnable {
 
                 int callbackCode = packet.callbackCode;
                 NetworkCallback callback = NetworkContext.mapCallbacks.remove(callbackCode);
-                
+
                 if (callback == null) {
                     continue;
                 }
