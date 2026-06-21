@@ -247,6 +247,7 @@ final class TetrisGame {
     }
 
     private boolean tryRotate(PlayerState state) {
+        if (state.currentPiece == 1) return false; // O-piece has no rotation
         int nextRotation = (state.rotation + 1) % 4;
         int[] kicks = new int[] {0, -1, 1, -2, 2};
         for (int kick : kicks) {

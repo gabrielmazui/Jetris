@@ -34,15 +34,20 @@ public class MatchResultScreen implements Screen {
         card.setMaxHeight(Region.USE_PREF_SIZE);
         card.setStyle("-fx-background-color: rgba(20, 20, 28, 0.96); -fx-background-radius: 20; -fx-border-radius: 20; -fx-border-color: rgba(255,255,255,0.08); -fx-border-width: 1;");
 
+        boolean spectate = "SPECTATE".equalsIgnoreCase(outcome);
         boolean won = "WIN".equalsIgnoreCase(outcome);
-        String accentColor = won ? "#00E676" : "#FF4A4A";
+        String accentColor = spectate ? "#FFB74D" : (won ? "#00E676" : "#FF4A4A");
+        String badgeText   = spectate ? "SPECTATE" : (won ? "VITÓRIA" : "DERROTA");
+        String titleText   = spectate
+            ? (reason != null && !reason.isBlank() ? reason + " Venceu!" : "Partida Encerrada!")
+            : (won ? "Você Venceu!" : "Você Perdeu!");
 
-        Label badge = new Label(won ? "VITÓRIA" : "DERROTA");
+        Label badge = new Label(badgeText);
         badge.setStyle("-fx-text-fill: " + accentColor + "; -fx-font-size: 11px; -fx-font-weight: bold; "
                 + "-fx-letter-spacing: 3px; -fx-background-color: " + accentColor + "22; "
                 + "-fx-background-radius: 999; -fx-padding: 5 14 5 14;");
 
-        Label title = new Label(won ? "Você Venceu!" : "Você Perdeu!");
+        Label title = new Label(titleText);
         title.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 30px; -fx-font-weight: 900; -fx-font-family: 'Segoe UI';");
 
         Label codeLabel = new Label("Partida  " + matchCode);

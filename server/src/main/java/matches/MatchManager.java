@@ -258,6 +258,18 @@ public class MatchManager {
         storeMatchResult(matchCode, winnerId, loserId, reason, startTimeMillis, endTimeMillis);
         sendMatchResultToUser(winnerId, matchCode);
         sendMatchResultToUser(loserId, matchCode);
+
+        if (session != null) {
+            String winnerName = resolveUsername(winnerId);
+            for (Integer specId : session.getSpectators()) {
+                String ip = SessionManager.getIpByUserId(specId);
+                if (ip != null) {
+                    TCPConnectionManager.send(ip, "MATCHRESULT 0 0 SUCCESS "
+                        + matchCode + "|SPECTATE|" + safeValue(winnerName)
+                        + "|" + startTimeMillis + "|" + endTimeMillis);
+                }
+            }
+        }
     }
 
     private static void sendMatchResultToUser(Integer userId, String matchCode) {

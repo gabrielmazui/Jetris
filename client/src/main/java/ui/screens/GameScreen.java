@@ -57,8 +57,8 @@ public class GameScreen implements Screen {
 
     private static final int BOARD_COLUMNS = 10;
     private static final int BOARD_ROWS = 20;
-    private static final int DAS_MS = 150;
-    private static final int ARR_MS = 50;
+    private static final int DAS_MS = 100;
+    private static final int ARR_MS = 33;
 
     private final StackPane root;
     private final BorderPane mainLayout;
@@ -626,10 +626,10 @@ public class GameScreen implements Screen {
         String raw = payload == null ? "" : payload.trim();
 
         if ("ROUND_START".equals(normalizedState)) {
-            lastDisplayedCountdownNumber = -1;
             String[] parts = raw.split("\\|", 2);
             String round = parts.length > 0 ? parts[0] : "1";
             String seconds = parts.length > 1 ? parts[1] : "5";
+            lastDisplayedCountdownNumber = parseIntSafe(seconds);
             updateMatchState("ROUND " + round, "#00ADB5");
             if (boardStatusLabel != null) boardStatusLabel.setVisible(false);
             roundLabel.setText("ROUND " + round);
