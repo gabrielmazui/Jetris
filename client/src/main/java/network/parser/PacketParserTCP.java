@@ -180,6 +180,22 @@ public class PacketParserTCP implements Runnable {
                         }
                         break;
 
+                    case "SPECTATE":
+                        {
+                            String[] body = bodyRaw.split(" ", 3);
+                            String status = body.length > 0 ? body[0] : "";
+                            boolean isSuccess = "SUCCESS".equalsIgnoreCase(status);
+                            if (isSuccess) {
+                                String action = body.length > 1 ? body[1] : "";
+                                String matchCodeVal = body.length > 2 ? body[2].trim() : "";
+                                packet = new matchPacket(code, bodyRaw, callbackCode, true, action, matchCodeVal);
+                            } else {
+                                String reason = body.length > 1 ? body[1] : "Unknown_error";
+                                packet = new matchPacket(code, reason, callbackCode, false, "FAIL", "");
+                            }
+                        }
+                        break;
+
                     case "MATCH_COUNTDOWN":
                         {
                             
