@@ -25,7 +25,10 @@ public class NetworkContext {
 
     public static volatile Boolean isAttemptingTCP = true;
     public static volatile Boolean isAttemptingUDP = true;
-
+    public static volatile Boolean retryMenuRequested = false;
+    public static volatile Boolean retryPaused = false;
+    public static volatile Boolean retryExhausted = false;
+    public static volatile boolean fullReconnectInProgress = false;
     public static final BlockingQueue<String> rawQueueTCP =
         new LinkedBlockingQueue<>();
     public static final BlockingQueue<String> rawQueueUDP =
@@ -34,4 +37,27 @@ public class NetworkContext {
         new LinkedBlockingQueue<>();
     public static final BlockingQueue<Packet> packetQueueUDP =
         new LinkedBlockingQueue<>();
+
+    public interface MatchEventListener {
+        void onCountdown(String matchCode, int secondsLeft);
+        void onMatchStarted(String matchCode);
+        default void onMatchCancelled(String matchCode, String reason) {}
+    }
+    public static volatile MatchEventListener matchEventListener;
+
+    public interface MatchStateListener {
+        void onState(String matchCode, String state, String payload);
+    }
+    public static volatile MatchStateListener matchStateListener;
+
+    public interface ChatListener {
+        void onMessage(String matchCode, int senderId, String senderName, String message);
+    }
+    public static volatile ChatListener chatListener;
+
+    public interface MatchResultListener {
+        void onResult(String matchCode, String outcome, String reason, long startTimeMillis, long endTimeMillis);
+    }
+    public static volatile MatchResultListener matchResultListener;
+
 }

@@ -10,6 +10,57 @@ public class DispatcherTCP implements Runnable {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 Packet packet = NetworkContext.packetQueueTCP.take();
+
+                if (packet instanceof matchCountdownPacket) {
+                    matchCountdownPacket cd = (matchCountdownPacket) packet;
+                    NetworkContext.MatchEventListener listener = NetworkContext.matchEventListener;
+                    if (listener != null) {
+                        if (cd.secondsLeft <= 0) {
+                            listener.onMatchStarted(cd.matchCode);
+                        } else {
+                            listener.onCountdown(cd.matchCode, cd.secondsLeft);
+                        }
+                    }
+                    continue;
+                }
+
+                if (packet instanceof matchAbortPacket) {
+                    matchAbortPacket abort = (matchAbortPacket) packet;
+                    NetworkContext.MatchEventListener listener = NetworkContext.matchEventListener;
+                    if (listener != null) {
+                        listener.onMatchCancelled(abort.matchCode, abort.reason);
+                    }
+                    continue;
+                }
+
+                if (packet instanceof matchStatePacket) {
+                    matchStatePacket state = (matchStatePacket) packet;
+                    NetworkContext.MatchStateListener listener = NetworkContext.matchStateListener;
+                    if (listener != null) {
+                        listener.onState(state.matchCode, state.state, state.payload);
+                    }
+                    continue;
+                }
+
+                if (packet instanceof chatPacket) {
+                    chatPacket chat = (chatPacket) packet;
+                    NetworkContext.ChatListener listener = NetworkContext.chatListener;
+                    if (listener != null) {
+                        listener.onMessage(chat.matchCode, chat.senderId, chat.senderName, chat.message);
+                    }
+                    continue;
+                }
+
+                if (packet instanceof matchResultPacket) {
+                    matchResultPacket result = (matchResultPacket) packet;
+                    NetworkContext.MatchResultListener listener = NetworkContext.matchResultListener;
+                    if (listener != null) {
+                        listener.onResult(result.matchCode, result.outcome, result.reason,
+                                result.startTimeMillis, result.endTimeMillis);
+                    }
+                    continue;
+                }
+
                 int callbackCode = packet.callbackCode;
                 NetworkCallback callback = NetworkContext.mapCallbacks.remove(callbackCode);
                 
@@ -67,6 +118,20 @@ public class DispatcherTCP implements Runnable {
                         callback.onSuccess("SUCCESS");
                     } else {
                         callback.onFailure(del.error.length() > 0 ? del.error : "Unknown error");
+                    }
+                } else if (packet instanceof matchPacket) {
+                    matchPacket match = (matchPacket) packet;
+                    if (match.success) {
+                        callback.onSuccess(match.action + (match.matchCode.isEmpty() ? "" : " " + match.matchCode));
+                    } else {
+                        callback.onFailure(match.body);
+                    }
+                } else if (packet instanceof matchListPacket) {
+                    matchListPacket list = (matchListPacket) packet;
+                    if (list.success) {
+                        callback.onSuccess(list.payload);
+                    } else {
+                        callback.onFailure(list.payload);
                     }
                 }
 

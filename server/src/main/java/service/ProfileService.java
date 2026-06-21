@@ -57,7 +57,8 @@ public class ProfileService {
             .append(" ").append(m.getDurationSeconds())
             .append(" ").append(m.getScoreUser1())
             .append(" ").append(m.getScoreUser2())
-            .append(" ").append(m.isWon());
+            .append(" ").append(m.isWon())
+            .append(" ").append(m.getMatchDateMillis());
         }
 
         TCPConnectionManager.send(clientIp, sb.toString());

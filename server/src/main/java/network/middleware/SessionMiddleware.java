@@ -1,6 +1,6 @@
 package network.middleware;
 
-import auth.SessionManager;
+import network.SessionManager;
 
 public class SessionMiddleware extends Middleware {
     @Override

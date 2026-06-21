@@ -6,6 +6,7 @@ import network.parser.PacketParserTCP;
 import core.ScreenManager;
 import exceptions.ConnectionException;
 import network.dispatcher.DispatcherTCP;
+import ui.screens.LoadingScreen;
 
 public class NetworkManager {
     private static TCPClient tcp;
@@ -41,12 +42,18 @@ public class NetworkManager {
         try{
             while (true) {
                 Thread.sleep(1000);
-                if(NetworkContext.tcpState == ConnectionState.RECONNECTING || NetworkContext.udpState == ConnectionState.RECONNECTING || NetworkContext.tcpState == ConnectionState.DISCONNECTED || NetworkContext.udpState == ConnectionState.DISCONNECTED){
-                    retryConnection();
-                    ScreenManager.CurrScreen.UpdatePing(-1);
+
+                if (ScreenManager.CurrScreen == null) {
+                    continue;
                 }
-                if(NetworkContext.tcpState == ConnectionState.CONNECTED && NetworkContext.udpState == ConnectionState.CONNECTED){
-                    ScreenManager.CurrScreen.DisableRetryMenu();
+
+                boolean tcpOk = NetworkContext.tcpState == ConnectionState.CONNECTED;
+                boolean udpOk = NetworkContext.udpState == ConnectionState.CONNECTED;
+
+                if (!tcpOk || !udpOk) {
+                    ScreenManager.CurrScreen.UpdatePing(-1);
+                } else {
+                    NetworkContext.fullReconnectInProgress = false;
                 }
             }
         }catch(InterruptedException e){
@@ -57,12 +64,22 @@ public class NetworkManager {
     static public void retryConnection(){
         if(NetworkContext.tcpState != ConnectionState.CONNECTED && !NetworkContext.isAttemptingTCP){
             Thread.startVirtualThread(tcp);
-            ScreenManager.CurrScreen.EnableRetryMenu();
         }
         if(NetworkContext.udpState != ConnectionState.CONNECTED && !NetworkContext.isAttemptingUDP){
             Thread.startVirtualThread(udp);
-            ScreenManager.CurrScreen.EnableRetryMenu();
         }
+    }
+
+    public static void notifyConnectionDrop() {
+        if (NetworkContext.fullReconnectInProgress) {
+            return;
+        }
+        if (ScreenManager.CurrScreen instanceof LoadingScreen) {
+            NetworkContext.fullReconnectInProgress = true;
+            return;
+        }
+        NetworkContext.fullReconnectInProgress = true;
+        ScreenManager.setScreen(new LoadingScreen());
     }
 
     public static void sendTCP(String toSend, NetworkCallback callback){
@@ -76,12 +93,28 @@ public class NetworkManager {
         }
     }
 
+    public static void sendTCP(String toSend) throws ConnectionException {
+        if (NetworkContext.tcpState == ConnectionState.CONNECTED) {
+            tcp.send(toSend);
+        }
+    }
+
     public static void sendUDP(String toSend, NetworkCallback callback){
         if(NetworkContext.udpState == ConnectionState.CONNECTED){
             NetworkContext.mapCallbacks.put(callback.code, callback);
             try{
                 udp.send(toSend);
             }catch(Exception e){
+                retryConnection();
+            }
+        }
+    }
+
+    public static void sendUDP(String toSend) {
+        if (NetworkContext.udpState == ConnectionState.CONNECTED) {
+            try {
+                udp.send(toSend);
+            } catch (Exception e) {
                 retryConnection();
             }
         }

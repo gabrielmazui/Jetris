@@ -1,7 +1,9 @@
-package auth;
+package network;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import matches.MatchManager;
 
 public class SessionManager {
 
@@ -79,6 +81,7 @@ public class SessionManager {
             
             return currentSession;
         });
+        MatchManager.handleUserReconnected(userId);
     }
 
     public static void removeSession(String clientIp) {
@@ -86,6 +89,7 @@ public class SessionManager {
 
         Integer userId = ipToUserId.remove(clientIp);
         if (userId != null) {
+            MatchManager.handleUserDeparture(userId, clientIp);
             sessionsByUserId.computeIfPresent(userId, (key, currentSession) -> {
                 if (clientIp.equals(currentSession.clientIp)) {
                     currentSession.clientIp = null; 
@@ -99,6 +103,7 @@ public class SessionManager {
         UserSession session = sessionsByUserId.remove(userId);
 
         if (session != null) {
+            MatchManager.handleUserDeparture(userId, session.clientIp, true);
             tokenToUserId.remove(session.token);
             if (session.clientIp != null) {
                 ipToUserId.remove(session.clientIp);

@@ -1,10 +1,10 @@
-package auth.service;
+package service.auth;
 
 import java.util.Base64;
 
+import network.SessionManager;
 import network.connection.TCPConnectionManager;
 import network.packets.LoginPacket;
-import auth.SessionManager;
 import db.DatabaseManager;
 import exceptions.DBException;
 
@@ -19,6 +19,23 @@ public class LoginService {
             Integer userId = SessionManager.getUserIdByToken(token);
 
             if (userId != null) {
+                Integer onlineUserAtIp = SessionManager.getUserId(clientIp);
+                if (onlineUserAtIp != null) {
+                    TCPConnectionManager.send(
+                        clientIp,
+                        "LOGIN 0 " + callback + " FAIL IP_already_in_use"
+                    );
+                    return;
+                }
+
+                if (SessionManager.isUserOnline(userId)) {
+                    TCPConnectionManager.send(
+                        clientIp,
+                        "LOGIN 0 " + callback + " FAIL User_already_online"
+                    );
+                    return;
+                }
+
                 SessionManager.registerSession(clientIp, userId);
 
                 String pfpBase64 = getPfpBase64(userId);
@@ -94,16 +111,20 @@ public class LoginService {
                 return;
             }
 
-            if (SessionManager.isUserOnline(userId)) {
-                String currentIpOfUser = SessionManager.getIpByUserId(userId);
+            if (SessionManager.getUserId(clientIp) != null) {
+                TCPConnectionManager.send(
+                    clientIp,
+                    "LOGIN 1 " + callback + " FAIL IP_already_in_use"
+                );
+                return;
+            }
 
-                if (!clientIp.equals(currentIpOfUser)) {
-                    TCPConnectionManager.send(
-                        clientIp,
-                        "LOGIN 1 " + callback + " FAIL User_already_online_elsewhere"
-                    );
-                    return;
-                }
+            if (SessionManager.isUserOnline(userId)) {
+                TCPConnectionManager.send(
+                    clientIp,
+                    "LOGIN 1 " + callback + " FAIL User_already_online"
+                );
+                return;
             }
 
             String token = SessionManager.generateToken(userId);

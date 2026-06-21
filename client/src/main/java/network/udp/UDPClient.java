@@ -1,10 +1,12 @@
 package network.udp;
 
 import java.net.*;
+import network.NetworkManager;
 import network.NetworkContext;
 import network.ConnectionState;
 
 public class UDPClient implements Runnable {
+    private static final int MAX_RECONNECT_ATTEMPTS = 20;
 
     private DatagramSocket socket;
     private InetAddress address;
@@ -12,28 +14,24 @@ public class UDPClient implements Runnable {
     private volatile long lastPongTime;
 
     private static final int DISCONNECT_TIME = 3000;
-    private static final int MAX_RETRIES = 60;
-
-    private volatile int retries = 0;
+    private volatile boolean running = true;
 
     @Override
     public void run() {
-        retries = 0;
         NetworkContext.isAttemptingUDP = true;
-        while (retries < MAX_RETRIES) {
+        boolean firstAttempt = true;
+        int reconnectAttempts = 0;
+        while (running && !Thread.currentThread().isInterrupted()) {
             long startTime = System.currentTimeMillis();
+            boolean exhausted = false;
             try {
-                System.out.println("[UDP] Connecting attempt: " + (retries + 1));
-                if (retries == 0) {
-                    NetworkContext.udpState = ConnectionState.CONNECTING;
-                } else {
-                    NetworkContext.udpState = ConnectionState.RECONNECTING;
-                }
+                System.out.println("[UDP] Attempt " + (reconnectAttempts + 1) + "/" + MAX_RECONNECT_ATTEMPTS);
+                NetworkContext.udpState = firstAttempt ? ConnectionState.CONNECTING : ConnectionState.RECONNECTING;
 
                 connect();
-                retries = MAX_RETRIES; 
-                NetworkContext.isAttemptingUDP = false;
+                firstAttempt = false;
                 System.out.println("[UDP] Connected");
+                reconnectAttempts = 0;
                 
                 startPingLoop();
 
@@ -55,26 +53,42 @@ public class UDPClient implements Runnable {
 
                     } catch (SocketTimeoutException e) {
                         if (System.currentTimeMillis() - lastPongTime > DISCONNECT_TIME) {
+                            NetworkManager.notifyConnectionDrop();
                             break;
                         }
                     }
                 }
 
             } catch (Exception e) {
+                if (running && NetworkContext.udpState != ConnectionState.DISCONNECTED) {
+                    reconnectAttempts++;
+                    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                        exhausted = true;
+                        System.out.println("[UDP] Reconnect attempts exhausted");
+                    }
+                }
                 if (NetworkContext.udpState == ConnectionState.CONNECTED) {
                     NetworkContext.udpState = ConnectionState.RECONNECTING;
                 }
             } finally {
-                if (retries < MAX_RETRIES && NetworkContext.udpState != ConnectionState.DISCONNECTED) {
+                if (exhausted) {
+                    NetworkContext.udpState = ConnectionState.DISCONNECTED;
+                    NetworkContext.isAttemptingUDP = false;
+                    cleanup();
+                    break;
+                }
+                if (running && NetworkContext.udpState != ConnectionState.DISCONNECTED) {
                     NetworkContext.udpState = ConnectionState.RECONNECTING;
                 }
                 cleanup();
-                retries++;
+                if (running && NetworkContext.udpState != ConnectionState.DISCONNECTED) {
+                    NetworkManager.notifyConnectionDrop();
+                }
                 
                 long timeSpent = System.currentTimeMillis() - startTime;      
                 long remainingSleep = 1000 - timeSpent;
 
-                if (remainingSleep > 0 && retries < MAX_RETRIES && NetworkContext.udpState != ConnectionState.DISCONNECTED) {
+                if (remainingSleep > 0 && running && NetworkContext.udpState != ConnectionState.DISCONNECTED) {
                     try { 
                         Thread.sleep(remainingSleep); 
                     } catch (InterruptedException ignored) {}
@@ -82,6 +96,7 @@ public class UDPClient implements Runnable {
             }
         }
         NetworkContext.udpState = ConnectionState.DISCONNECTED;
+        NetworkContext.isAttemptingUDP = false;
     }
 
     private void connect() throws Exception {
@@ -146,7 +161,9 @@ public class UDPClient implements Runnable {
     }
 
     public void shutdown() {
+        running = false;
         NetworkContext.udpState = ConnectionState.DISCONNECTED;
+        NetworkContext.isAttemptingUDP = false;
         cleanup();
     }
 }

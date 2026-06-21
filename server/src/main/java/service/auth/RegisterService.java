@@ -1,4 +1,4 @@
-package auth.service;
+package service.auth;
 
 import network.connection.TCPConnectionManager;
 import network.packets.RegisterPacket;

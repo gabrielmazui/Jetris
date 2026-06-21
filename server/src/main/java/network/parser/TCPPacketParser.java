@@ -1,10 +1,14 @@
 package network.parser;
 
-import auth.service.*;
+import service.auth.*;
+import service.matchmaking.MatchmakingService;
+import service.matchmaking.SpectateService;
 import network.connection.TCPConnectionManager;
 import network.middleware.*;
 import network.packets.*;
 import service.ProfileService;
+import network.SessionManager;
+import matches.SpectateManager;
 
 public class TCPPacketParser {
 
@@ -134,6 +138,43 @@ public class TCPPacketParser {
                     DeleteService.handle(deletePacket, clientIp);
                 }
                 break;
+
+            case "MATCH":
+                {
+                    String[] b = bodyRaw.split(" ", 2);
+                    String s = "";
+                    if(b.length > 1){
+                        s = b[1];
+                    }
+                    MatchmakingService.handle(code, callbackCode, s, clientIp);
+                    break;
+                }
+
+            case "SPECTATE":
+                {
+                    String[] b = bodyRaw.split(" ", 2);
+                    String s = "";
+                    if(b.length > 1){
+                        s = b[1];
+                    }
+                    SpectateService.handle(code, callbackCode, s, clientIp);
+                    break;
+                }
+
+            case "CHAT":
+                {
+                    String[] b = bodyRaw.split(" ", 3);
+                    if (b.length >= 3) {
+                        String token = b[0];
+                        String matchCode = b[1];
+                        String message = b[2];
+                        Integer senderId = SessionManager.getUserIdByToken(token);
+                        if (senderId != null) {
+                            SpectateManager.handleChat(senderId, matchCode, message, clientIp);
+                        }
+                    }
+                    break;
+                }
 
             default:
                 System.err.println("[TCP Parser] Unknown Type (" + type + ") from " + clientIp);

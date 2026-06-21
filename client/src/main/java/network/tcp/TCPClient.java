@@ -3,32 +3,36 @@ package network.tcp;
 import java.net.*;
 import java.io.*;
 import exceptions.ConnectionException;
+import network.NetworkManager;
 import network.NetworkContext;
 import network.ConnectionState;
 
 public class TCPClient implements Runnable {
+    private static final int MAX_RECONNECT_ATTEMPTS = 10;
     private BufferedReader in;  
     private PrintWriter out;
     private Socket socket;
 
     private volatile long lastPongTime;
-    private int retries = 0;
-    private static final int MAX_RETRIES = 30;
     private static final int TIMEOUT_PONG = 6000;
+    private volatile boolean running = true;
 
     @Override
     public void run() {
         NetworkContext.isAttemptingTCP = true;
-        retries = 0;
-        while (retries < MAX_RETRIES) {
+        boolean firstAttempt = true;
+        int reconnectAttempts = 0;
+        while (running && !Thread.currentThread().isInterrupted()) {
             long startTime = System.currentTimeMillis();
+            boolean exhausted = false;
             try {
-                System.out.println("[TCP] Connecting attempt: " + (retries + 1));
-                NetworkContext.tcpState = ConnectionState.CONNECTING;
+                System.out.println("[TCP] Attempt " + (reconnectAttempts + 1) + "/" + MAX_RECONNECT_ATTEMPTS);
+                NetworkContext.tcpState = firstAttempt ? ConnectionState.CONNECTING : ConnectionState.RECONNECTING;
                 
                 connect();
-                retries = MAX_RETRIES;
                 NetworkContext.isAttemptingTCP = false;
+                firstAttempt = false;
+                reconnectAttempts = 0;
                 startPingLoop();
 
                 String msg;
@@ -41,7 +45,13 @@ public class TCPClient implements Runnable {
                 }
 
             } catch (Exception e) {
-        
+                if (running && NetworkContext.tcpState != ConnectionState.DISCONNECTED) {
+                    reconnectAttempts++;
+                    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                        exhausted = true;
+                        System.out.println("[TCP] Reconnect attempts exhausted");
+                    }
+                }
             } finally {
 
                 if (NetworkContext.tcpState == ConnectionState.CONNECTED) {
@@ -49,12 +59,19 @@ public class TCPClient implements Runnable {
                 }
                 
                 cleanup();
-                retries++;
+                if (exhausted) {
+                    NetworkContext.tcpState = ConnectionState.DISCONNECTED;
+                    NetworkContext.isAttemptingTCP = false;
+                    break;
+                }
+                if (running && NetworkContext.tcpState != ConnectionState.DISCONNECTED) {
+                    NetworkManager.notifyConnectionDrop();
+                }
                 
                 long timeSpent = System.currentTimeMillis() - startTime;      
                 long remainingSleep = 2000 - timeSpent;
 
-                if (remainingSleep > 0 && retries < MAX_RETRIES && NetworkContext.tcpState != ConnectionState.DISCONNECTED) {
+                if (remainingSleep > 0 && running && NetworkContext.tcpState != ConnectionState.DISCONNECTED) {
                     try { 
                         Thread.sleep(remainingSleep); 
                     } catch (InterruptedException ignored) {}
@@ -131,6 +148,7 @@ public class TCPClient implements Runnable {
     }
 
     public void shutdown() {
+        running = false;
         NetworkContext.tcpState = ConnectionState.DISCONNECTED;
         cleanup();
     }

@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -122,6 +123,25 @@ public class DatabaseManager {
         return -1;
     }
 
+    public static String getUsernameById(int userId) throws DBException {
+        if (connection == null || !connect()) {
+            throw new DBException("[DB] error");
+        }
+
+        String sql = "SELECT username FROM users WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("username");
+                }
+            }
+        } catch (SQLException e) {
+            throw new DBException("[DB] Username Error" + e.getMessage());
+        }
+        return null;
+    }
+
     public static int[] getUserStats(int userId) throws DBException {
         if (connection == null || !connect()) {
             throw new DBException("[DB] Sem conexão com o banco");
@@ -200,7 +220,8 @@ public class DatabaseManager {
         List<Match> history = new ArrayList<>();
         
         String sql = "SELECT u1.username AS jogador1, u2.username AS jogador2, m.duration_seconds, " +
-                    "m.score_user1, m.score_user2, (CASE WHEN m.winner_id = ? THEN 1 ELSE 0 END) AS won " +
+                    "m.score_user1, m.score_user2, (CASE WHEN m.winner_id = ? THEN 1 ELSE 0 END) AS won, " +
+                    "m.match_date " +
                     "FROM match_history m " +
                     "JOIN users u1 ON m.user1_id = u1.id " +
                     "JOIN users u2 ON m.user2_id = u2.id " +
@@ -214,13 +235,16 @@ public class DatabaseManager {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
+                    Timestamp ts = rs.getTimestamp("match_date");
+                    long matchDateMillis = ts != null ? ts.getTime() : 0L;
                     Match match = new Match(
                         rs.getString("jogador1"),
                         rs.getString("jogador2"),
                         rs.getInt("duration_seconds"),
                         rs.getInt("score_user1"),
                         rs.getInt("score_user2"),
-                        rs.getInt("won") == 1
+                        rs.getInt("won") == 1,
+                        matchDateMillis
                     );
                     history.add(match);
                 }
@@ -345,7 +369,8 @@ public class DatabaseManager {
         List<Match> history = new ArrayList<>();
         int offset = (page - 1) * pageSize;
         String sql = "SELECT u1.username AS jogador1, u2.username AS jogador2, m.duration_seconds, " +
-                    "m.score_user1, m.score_user2, (CASE WHEN m.winner_id = ? THEN 1 ELSE 0 END) AS won " +
+                    "m.score_user1, m.score_user2, (CASE WHEN m.winner_id = ? THEN 1 ELSE 0 END) AS won, " +
+                    "m.match_date " +
                     "FROM match_history m " +
                     "JOIN users u1 ON m.user1_id = u1.id " +
                     "JOIN users u2 ON m.user2_id = u2.id " +
@@ -359,13 +384,16 @@ public class DatabaseManager {
             stmt.setInt(5, offset);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
+                    Timestamp ts = rs.getTimestamp("match_date");
+                    long matchDateMillis = ts != null ? ts.getTime() : 0L;
                     history.add(new Match(
                         rs.getString("jogador1"),
                         rs.getString("jogador2"),
                         rs.getInt("duration_seconds"),
                         rs.getInt("score_user1"),
                         rs.getInt("score_user2"),
-                        rs.getInt("won") == 1
+                        rs.getInt("won") == 1,
+                        matchDateMillis
                     ));
                 }
             }

@@ -1,6 +1,6 @@
-package auth.service;
+package service.auth;
 
-import auth.SessionManager;
+import network.SessionManager;
 import network.connection.TCPConnectionManager;
 import network.packets.LogoutPack;
 

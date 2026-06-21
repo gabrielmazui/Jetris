@@ -1,8 +1,8 @@
-package auth.service;
+package service.auth;
 
-import auth.SessionManager;
 import db.DatabaseManager;
 import exceptions.DBException;
+import network.SessionManager;
 import network.connection.TCPConnectionManager;
 import network.packets.DeleteAccountPacket;
 

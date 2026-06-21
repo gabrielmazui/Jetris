@@ -2,6 +2,7 @@ package network;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import io.github.cdimascio.dotenv.DotenvException;
+import matches.GameLoopManager;
 import network.core.TCPServer;
 import network.core.UDPServer;
 
@@ -38,5 +39,6 @@ public class NetworkManager {
 
         Thread.startVirtualThread(TCPServer::start);
         Thread.startVirtualThread(UDPServer::start);
+        GameLoopManager.start();
     }
 }

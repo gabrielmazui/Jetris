@@ -38,7 +38,10 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 import network.NetworkContext;
+import ui.service.MatchListService;
 import ui.service.LogoutService;
+import ui.service.MatchMakingService;
+import ui.service.SpectateMatchService;
 
 public class MainScreen implements Screen {
 
@@ -56,6 +59,25 @@ public class MainScreen implements Screen {
     private int currentPage = 1;
     private int totalPages = 1;
     private int totalActiveMatches = 0;
+
+    private Button findMatchBtn;
+    private Button searchMatchBtn;
+    private Button joinPrivateBtn;
+    private Button createMatchBtn;
+    private Label searchStatusLabel;
+    private TextField matchSearchInput;
+    private TextField privateCodeInput;
+    private StackPane matchOverlay;
+    private String pendingPrivateMatchCode = "";
+    private String currentMatchQuery = "";
+
+    private enum PendingMatchType {
+        NONE,
+        QUEUE,
+        PRIVATE
+    }
+
+    private PendingMatchType pendingMatchType = PendingMatchType.NONE;
 
     private static final String INPUT_STYLE = """
         -fx-background-color: #1E1E26;
@@ -129,6 +151,8 @@ public class MainScreen implements Screen {
         HBox topBar = new HBox();
         topBar.setAlignment(Pos.CENTER);
         topBar.setSpacing(20);
+        topBar.setMinHeight(Region.USE_PREF_SIZE);
+        topBar.setMaxWidth(Double.MAX_VALUE);
 
         Label title = new Label("JETRIS");
         title.setFont(Font.font("Segoe UI", FontWeight.EXTRA_BOLD, 24));
@@ -137,6 +161,7 @@ public class MainScreen implements Screen {
 
         Button usersBtn = new Button("Users");
         usersBtn.setStyle(SECONDARY_BUTTON_STYLE);
+        usersBtn.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         applyButtonEffects(usersBtn, "#2E2E38", "#3E3E4A");
         usersBtn.setOnAction(e -> onUsersClick());
 
@@ -158,15 +183,18 @@ public class MainScreen implements Screen {
         pingLabel.setStyle("-fx-text-fill: #6E6E77; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px; -fx-font-weight: bold;");
         HBox pingBox = new HBox(6, pingLabel, dotsBox);
         pingBox.setAlignment(Pos.CENTER);
+        pingBox.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
         Button settingsBtn = new Button("⚙");
         settingsBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6E6E77; -fx-font-size: 20px; -fx-cursor: hand;");
+        settingsBtn.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         applyIconRotationEffect(settingsBtn);
         settingsBtn.setOnAction(e -> onSettingsClick());
 
         VBox profileBox = new VBox(4);
         profileBox.setAlignment(Pos.CENTER);
         profileBox.setStyle("-fx-cursor: hand;");
+        profileBox.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         applyProfileHoverEffect(profileBox);
 
         byte[] pfpBytes = UserSession.getPfp();
@@ -231,55 +259,162 @@ public class MainScreen implements Screen {
 
         HBox rightControls = new HBox(20, pingBox, settingsBtn, profileBox);
         rightControls.setAlignment(Pos.CENTER_RIGHT);
+        rightControls.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
         topBar.getChildren().addAll(title, usersBtn, spacer1, rightControls);
         return topBar;
     }
 
-    private VBox createCenterContent() {
-        VBox centerBox = new VBox(30);
+    private ScrollPane createCenterContent() {
+        VBox centerBox = new VBox(14);
         centerBox.setAlignment(Pos.TOP_CENTER);
-        centerBox.setPadding(new Insets(40, 0, 0, 0));
-        centerBox.setMaxWidth(800);
+        centerBox.setPadding(new Insets(15, 0, 0, 0)); 
+        centerBox.setMaxWidth(1080);
 
-        HBox searchArea = new HBox(10);
-        searchArea.setAlignment(Pos.CENTER);
+        VBox.setVgrow(centerBox, Priority.ALWAYS);
 
-        TextField searchInput = new TextField();
-        searchInput.setPromptText("Search match by code or user...");
-        searchInput.setStyle(INPUT_STYLE);
-        searchInput.setPrefWidth(400);
-        searchInput.focusedProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal) {
-                searchInput.setStyle(INPUT_STYLE + "-fx-border-color: #00ADB5;");
-            } else {
-                searchInput.setStyle(INPUT_STYLE);
-            }
-        });
+        VBox heroCard = new VBox(6);
+        heroCard.setAlignment(Pos.CENTER_LEFT);
+        heroCard.setPadding(new Insets(14, 20, 14, 20));
+        heroCard.setStyle("-fx-background-color: linear-gradient(to right, rgba(32, 32, 44, 0.95), rgba(16, 16, 22, 0.95)); -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: rgba(255, 255, 255, 0.06); -fx-border-width: 1;");
+
+        Label heroEyebrow = new Label("MATCH LOBBY");
+        heroEyebrow.setStyle("-fx-text-fill: #6E6E77; -fx-font-family: 'Segoe UI'; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 3px;");
+
+        Label heroTitle = new Label("Choose how you want to play");
+        heroTitle.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 20px; -fx-font-weight: 900;");
+
+        Label heroSubtitle = new Label("Find a quick match, create a private room, or join one with a code.");
+        heroSubtitle.setWrapText(true);
+        heroSubtitle.setStyle("-fx-text-fill: #A3A3B0; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px;");
+
+        heroCard.getChildren().addAll(heroEyebrow, heroTitle, heroSubtitle);
+
+        HBox actionsRow = new HBox(14);
+        actionsRow.setAlignment(Pos.CENTER);
+
+        VBox quickCard = new VBox(12);
+        quickCard.setAlignment(Pos.CENTER_LEFT);
+        quickCard.setPadding(new Insets(16));
+        quickCard.setStyle("-fx-background-color: #17171F; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #2A2A36; -fx-border-width: 1;");
+        HBox.setHgrow(quickCard, Priority.ALWAYS);
+
+        Label quickTitle = new Label("Quick Match");
+        quickTitle.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 15px; -fx-font-weight: 800;");
+        Label quickBody = new Label("Jump into the public queue and get matched automatically.");
+        quickBody.setWrapText(true);
+        quickBody.setStyle("-fx-text-fill: #A3A3B0; -fx-font-size: 11px;");
+
+        HBox quickButtons = new HBox(10);
+        quickButtons.setAlignment(Pos.CENTER_LEFT);
 
         Button findMatchBtn = new Button("Find Match");
         findMatchBtn.setStyle(PRIMARY_BUTTON_STYLE);
         applyButtonEffects(findMatchBtn, "#00ADB5", "#33BEC4");
-        findMatchBtn.setOnAction(e -> onFindMatch(searchInput.getText()));
+        findMatchBtn.setOnAction(e -> onFindMatch());
+        this.findMatchBtn = findMatchBtn;
 
         Button createMatchBtn = new Button("Create Private Match");
         createMatchBtn.setStyle(SECONDARY_BUTTON_STYLE);
         applyButtonEffects(createMatchBtn, "#2E2E38", "#3E3E4A");
         createMatchBtn.setOnAction(e -> onCreatePrivateMatch());
+        this.createMatchBtn = createMatchBtn;
 
-        searchArea.getChildren().addAll(searchInput, findMatchBtn, createMatchBtn);
+        quickButtons.getChildren().addAll(findMatchBtn, createMatchBtn);
+        quickCard.getChildren().addAll(quickTitle, quickBody, quickButtons);
 
-        VBox matchesSection = new VBox(15);
+        VBox privateCard = new VBox(12);
+        privateCard.setAlignment(Pos.CENTER_LEFT);
+        privateCard.setPadding(new Insets(16));
+        privateCard.setStyle("-fx-background-color: #17171F; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #2A2A36; -fx-border-width: 1;");
+        HBox.setHgrow(privateCard, Priority.ALWAYS);
+
+        Label privateTitle = new Label("Private Match");
+        privateTitle.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 15px; -fx-font-weight: 800;");
+        Label privateBody = new Label("Join a room using a 6-character code.");
+        privateBody.setWrapText(true);
+        privateBody.setStyle("-fx-text-fill: #A3A3B0; -fx-font-size: 11px;");
+
+        privateCodeInput = new TextField();
+        privateCodeInput.setPromptText("Enter private code");
+        privateCodeInput.setStyle(INPUT_STYLE);
+        privateCodeInput.setPrefWidth(180);
+        privateCodeInput.setOnAction(e -> onJoinPrivateMatch());
+        privateCodeInput.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                privateCodeInput.setStyle(INPUT_STYLE + "-fx-border-color: #00ADB5;");
+            } else {
+                privateCodeInput.setStyle(INPUT_STYLE);
+            }
+        });
+
+        joinPrivateBtn = new Button("Join Private");
+        joinPrivateBtn.setStyle(PRIMARY_BUTTON_STYLE);
+        applyButtonEffects(joinPrivateBtn, "#00ADB5", "#33BEC4");
+        joinPrivateBtn.setOnAction(e -> onJoinPrivateMatch());
+
+        HBox privateActions = new HBox(10, privateCodeInput, joinPrivateBtn);
+        privateActions.setAlignment(Pos.CENTER_LEFT);
+
+        privateCard.getChildren().addAll(privateTitle, privateBody, privateActions);
+
+        actionsRow.getChildren().addAll(quickCard, privateCard);
+
+        HBox searchBar = new HBox(10);
+        searchBar.setAlignment(Pos.CENTER_LEFT);
+        searchBar.setPadding(new Insets(2, 0, 0, 0));
+
+        matchSearchInput = new TextField();
+        matchSearchInput.setPromptText("Search by code or user...");
+        matchSearchInput.setStyle(INPUT_STYLE);
+        HBox.setHgrow(matchSearchInput, Priority.ALWAYS);
+        matchSearchInput.setOnAction(e -> onSearchMatches());
+        matchSearchInput.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                matchSearchInput.setStyle(INPUT_STYLE + "-fx-border-color: #00ADB5;");
+            } else {
+                matchSearchInput.setStyle(INPUT_STYLE);
+            }
+        });
+
+        searchMatchBtn = new Button("Search");
+        searchMatchBtn.setStyle(PRIMARY_BUTTON_STYLE);
+        applyButtonEffects(searchMatchBtn, "#00ADB5", "#33BEC4");
+        searchMatchBtn.setOnAction(e -> onSearchMatches());
+
+        Button clearSearchBtn = new Button("Clear");
+        clearSearchBtn.setStyle(SECONDARY_BUTTON_STYLE);
+        applyButtonEffects(clearSearchBtn, "#2E2E38", "#3E3E4A");
+        clearSearchBtn.setOnAction(e -> {
+            if (matchSearchInput != null) {
+                matchSearchInput.clear();
+            }
+            currentMatchQuery = "";
+            fetchBackendMatchesData("");
+        });
+
+        searchBar.getChildren().addAll(matchSearchInput, searchMatchBtn, clearSearchBtn);
+
+        searchStatusLabel = new Label("");
+        searchStatusLabel.setStyle("-fx-text-fill: #6E6E77; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px; -fx-font-weight: bold;");
+        HBox statusBox = new HBox(searchStatusLabel);
+        statusBox.setAlignment(Pos.CENTER);
+
+        VBox matchesSection = new VBox(10);
+        matchesSection.setMinHeight(320);
+        matchesSection.setPadding(new Insets(14, 16, 14, 16));
+        matchesSection.setStyle("-fx-background-color: #14141C; -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: #2A2A36; -fx-border-width: 1;");
+        VBox.setVgrow(matchesSection, Priority.ALWAYS);
         
         HBox matchesHeader = new HBox();
         matchesHeader.setAlignment(Pos.CENTER_LEFT);
         
-        VBox titleAndCounterBox = new VBox(4);
+        VBox titleAndCounterBox = new VBox(2);
         Label matchesTitle = new Label("LIVE MATCHES");
-        matchesTitle.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 16px; -fx-font-weight: 800; -fx-letter-spacing: 1px;");
+        matchesTitle.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 15px; -fx-font-weight: 800; -fx-letter-spacing: 1px;");
         
         activeMatchesLabel = new Label("Current active matches: 0");
-        activeMatchesLabel.setStyle("-fx-text-fill: #6E6E77; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px; -fx-font-weight: bold;");
+        activeMatchesLabel.setStyle("-fx-text-fill: #6E6E77; -fx-font-family: 'Segoe UI'; -fx-font-size: 11px; -fx-font-weight: bold;");
         titleAndCounterBox.getChildren().addAll(matchesTitle, activeMatchesLabel);
         
         Region spacer = new Region();
@@ -298,42 +433,33 @@ public class MainScreen implements Screen {
         
         matchesHeader.getChildren().addAll(titleAndCounterBox, spacer, refreshBtn);
 
-        matchesList = new VBox(10);
+        matchesList = new VBox(12); 
+        matchesList.setPadding(new Insets(4, 12, 4, 4));
+        matchesList.setPickOnBounds(false);
         
         ScrollPane scrollPane = new ScrollPane(matchesList);
-        matchesList.setPadding(new Insets(10, 25, 10, 10));
-        matchesList.setPickOnBounds(false);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle(SCROLL_PANE_STYLE);
-        scrollPane.setPrefHeight(400);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        HBox paginationBox = new HBox(15);
-        paginationBox.setAlignment(Pos.CENTER);
-        paginationBox.setPadding(new Insets(10, 0, 0, 0));
+        matchesSection.getChildren().addAll(matchesHeader, scrollPane);
 
-        prevPageBtn = new Button("< Prev");
-        prevPageBtn.setStyle(SECONDARY_BUTTON_STYLE);
-        applyButtonEffects(prevPageBtn, "#2E2E38", "#3E3E4A");
-        prevPageBtn.setOnAction(e -> onPreviousPage());
-
-        pageInfoLabel = new Label("Page 1 of 1");
-        pageInfoLabel.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 13px; -fx-font-weight: bold;");
-
-        nextPageBtn = new Button("Next >");
-        nextPageBtn.setStyle(SECONDARY_BUTTON_STYLE);
-        applyButtonEffects(nextPageBtn, "#2E2E38", "#3E3E4A");
-        nextPageBtn.setOnAction(e -> onNextPage());
-
-        paginationBox.getChildren().addAll(prevPageBtn, pageInfoLabel, nextPageBtn);
-
-        matchesSection.getChildren().addAll(matchesHeader, scrollPane, paginationBox);
-
-        centerBox.getChildren().addAll(searchArea, matchesSection);
+        centerBox.getChildren().addAll(heroCard, actionsRow, searchBar, statusBox, matchesSection);
         
         Platform.runLater(this::fetchBackendMatchesData);
 
-        return centerBox;
+        StackPane centeredWrapper = new StackPane(centerBox);
+        centeredWrapper.setAlignment(Pos.TOP_CENTER);
+        centeredWrapper.setMaxWidth(Double.MAX_VALUE);
+
+        ScrollPane centerScrollPane = new ScrollPane(centeredWrapper);
+        centerScrollPane.setFitToWidth(true);
+        centerScrollPane.setFitToHeight(true);
+        centerScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        centerScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        centerScrollPane.setStyle(SCROLL_PANE_STYLE);
+        return centerScrollPane;
     }
 
     private HBox createBottomBar() {
@@ -348,7 +474,7 @@ public class MainScreen implements Screen {
         return bottomBar;
     }
 
-    private void addMatchCard(String user1, String user2, int score1, int score2, int round, int spectators, String matchId) {
+    private void addMatchCard(String user1, String user1Pfp, String user2, String user2Pfp, String state, int spectators, String matchId, long startTimeMillis) {
         StackPane cardWrapper = new StackPane();
         cardWrapper.setMaxWidth(Double.MAX_VALUE);
 
@@ -356,14 +482,30 @@ public class MainScreen implements Screen {
         card.setStyle(MATCH_CARD_STYLE);
         card.setAlignment(Pos.CENTER_LEFT);
 
-        VBox matchInfo = new VBox(5);
+        VBox matchInfo = new VBox(8);
+        HBox playersRow = new HBox(10);
+        playersRow.setAlignment(Pos.CENTER_LEFT);
+
+        Circle p1Avatar = buildAvatar(user1Pfp, Color.web("#00ADB5"));
+        Circle p2Avatar = buildAvatar(user2Pfp, Color.web("#FF4A4A"));
+
+        Label vsLabel = new Label("VS");
+        vsLabel.setStyle("-fx-text-fill: #6E6E77; -fx-font-size: 11px; -fx-font-weight: 900; -fx-letter-spacing: 2px;");
+        playersRow.getChildren().addAll(p1Avatar, vsLabel, p2Avatar);
+
         Label playersLabel = new Label(user1 + " x " + user2);
         playersLabel.setStyle("-fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 16px;");
-        
-        Label scoreLabel = new Label("Score: " + score1 + " - " + score2 + "  |  Round " + round);
-        scoreLabel.setStyle("-fx-text-fill: #00ADB5; -fx-font-size: 13px; -fx-font-weight: bold;");
-        
-        matchInfo.getChildren().addAll(playersLabel, scoreLabel);
+
+        String stateText = "State: " + state;
+        if (startTimeMillis > 0) {
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+            String startStr = java.time.LocalTime.ofInstant(java.time.Instant.ofEpochMilli(startTimeMillis), java.time.ZoneId.systemDefault()).format(fmt);
+            stateText += "  •  Início: " + startStr;
+        }
+        Label stateLabel = new Label(stateText);
+        stateLabel.setStyle("-fx-text-fill: #00ADB5; -fx-font-size: 12px; -fx-font-weight: bold;");
+
+        matchInfo.getChildren().addAll(playersLabel, playersRow, stateLabel);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -405,6 +547,25 @@ public class MainScreen implements Screen {
         });
 
         matchesList.getChildren().add(cardWrapper);
+    }
+
+    private Circle buildAvatar(String pfpBase64, Color borderColor) {
+        Circle avatar = new Circle(16, Color.web("#2E2E38"));
+        avatar.setStroke(borderColor);
+        avatar.setStrokeWidth(2);
+
+        if (pfpBase64 != null && !pfpBase64.isBlank()) {
+            try {
+                byte[] bytes = java.util.Base64.getDecoder().decode(pfpBase64.trim());
+                Image image = new Image(new ByteArrayInputStream(bytes));
+                if (!image.isError()) {
+                    avatar.setFill(new ImagePattern(image));
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
+        return avatar;
     }
 
     private void applyButtonEffects(Button button, String normalBg, String hoverBg) {
@@ -549,68 +710,372 @@ public class MainScreen implements Screen {
     }
 
     private void fetchBackendMatchesData() {
-        this.totalActiveMatches = onFetchTotalActiveMatchesCount();
-        this.totalPages = onFetchTotalPagesCount();
-        
-        activeMatchesLabel.setText("Current active matches: " + totalActiveMatches);
-        pageInfoLabel.setText("Page " + currentPage + " of " + totalPages);
-        
-        prevPageBtn.setDisable(currentPage == 1);
-        nextPageBtn.setDisable(currentPage == totalPages);
-        
-        populateMockMatches();
+        fetchBackendMatchesData(currentMatchQuery);
     }
 
-    private void populateMockMatches() {
+    private void fetchBackendMatchesData(String query) {
+        currentMatchQuery = query == null ? "" : query.trim();
+        matchesList.getChildren().setAll(createLoadingRow("Loading live matches"));
+        activeMatchesLabel.setText(currentMatchQuery.isEmpty()
+            ? "Current active matches: ..."
+            : "Current active matches for \"" + currentMatchQuery + "\": ...");
+
+        MatchListService.fetchLiveMatches(currentMatchQuery, new MatchListService.MatchListCallback() {
+            @Override
+            public void onSuccess(java.util.List<MatchListService.LiveMatch> matches) {
+                Platform.runLater(() -> renderLiveMatches(matches));
+            }
+
+            @Override
+            public void onFailure(String reason) {
+                Platform.runLater(() -> {
+                    matchesList.getChildren().setAll(createLoadingRow(
+                        "Request_timeout".equals(reason)
+                            ? "Server took too long to respond."
+                            : "Could not load live matches: " + reason
+                    ));
+                    activeMatchesLabel.setText("Current active matches: --");
+                });
+            }
+        });
+    }
+
+    private VBox createLoadingRow(String text) {
+        VBox row = new VBox();
+        row.setAlignment(Pos.CENTER);
+        row.setPadding(new Insets(20, 10, 20, 10));
+
+        Label label = new Label(text);
+        label.setStyle("-fx-text-fill: #6E6E77; -fx-font-size: 12px; -fx-font-weight: bold;");
+        row.getChildren().add(label);
+        return row;
+    }
+
+    private void renderLiveMatches(java.util.List<MatchListService.LiveMatch> matches) {
         matchesList.getChildren().clear();
-        if (currentPage == 1) {
-            addMatchCard("Faker", "Caps", 2, 1, 4, 1240, "match_001");
-            addMatchCard("Gabriel", "Player2", 0, 0, 1, 5, "match_002");
-            addMatchCard("DarkKnight", "ProSniper", 3, 2, 6, 42, "match_003");
-        } else if (currentPage == 2) {
-            addMatchCard("BetaTester", "AlphaPlayer", 1, 1, 2, 14, "match_004");
-            addMatchCard("Shadow", "Light", 5, 4, 9, 89, "match_005");
+        totalActiveMatches = matches.size();
+        totalPages = 1;
+        currentPage = 1;
+
+        activeMatchesLabel.setText("Current active matches: " + totalActiveMatches);
+        if (matches.isEmpty()) {
+            matchesList.getChildren().add(createLoadingRow("No live matches right now."));
+            return;
+        }
+
+        for (MatchListService.LiveMatch match : matches) {
+            addMatchCard(match.player1, match.player1Pfp, match.player2, match.player2Pfp, match.state, match.spectators, match.code, match.startTimeMillis);
         }
     }
 
-    private void onPreviousPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            onPageRequested(currentPage);
-            fetchBackendMatchesData();
+    private void onFindMatch() {
+        setSearchControlsDisabled(true);
+        searchStatusLabel.setText("Searching for an opponent...");
+        MatchMakingService.findMatch(new MatchMakingService.MatchResultCallback() {
+            @Override
+            public void onSuccess(String action, String matchCode) {
+                Platform.runLater(() -> {
+                    if ("START".equalsIgnoreCase(action)) {
+                        goToGameScreen(matchCode);
+                    } else {
+                        searchStatusLabel.setText("Waiting in queue for an opponent...");
+                        showPendingMatchOverlay(
+                            PendingMatchType.QUEUE,
+                            "SEARCHING MATCH",
+                            "You are in the queue. The screen is blocked until a match starts.",
+                            "",
+                            "CANCEL QUEUE"
+                        );
+                        armQueueListener();
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(String reason) {
+                Platform.runLater(() -> {
+                    searchStatusLabel.setText("Request_timeout".equals(reason)
+                        ? "Server took too long to respond."
+                        : "Couldn't find a match: " + reason);
+                    setSearchControlsDisabled(false);
+                });
+            }
+        });
+    }
+
+    private void onJoinPrivateMatch() {
+        String code = privateCodeInput == null ? "" : privateCodeInput.getText();
+        String trimmed = code == null ? "" : code.trim();
+
+        if (trimmed.isEmpty()) {
+            searchStatusLabel.setText("Enter a private match code first.");
+            return;
+        }
+
+        setSearchControlsDisabled(true);
+        searchStatusLabel.setText("Joining private match " + trimmed + "...");
+
+        MatchMakingService.joinPrivateMatch(trimmed, new MatchMakingService.MatchResultCallback() {
+            @Override
+            public void onSuccess(String action, String matchCode) {
+                Platform.runLater(() -> goToGameScreen(matchCode));
+            }
+
+            @Override
+            public void onFailure(String reason) {
+                Platform.runLater(() -> {
+                    searchStatusLabel.setText("Request_timeout".equals(reason)
+                        ? "Server took too long to respond."
+                        : "Couldn't join: " + reason);
+                    setSearchControlsDisabled(false);
+                });
+            }
+        });
+    }
+
+    private void armQueueListener() {
+        MatchMakingService.listenForCountdown(new MatchMakingService.CountdownListener() {
+            @Override
+            public void onTick(String matchCode, int secondsLeft) {
+                Platform.runLater(() -> {
+                    if (pendingMatchType == PendingMatchType.QUEUE) {
+                        goToGameScreen(matchCode);
+                    } else if (pendingMatchType == PendingMatchType.PRIVATE && matchCode.equals(pendingPrivateMatchCode)) {
+                        goToGameScreen(matchCode);
+                    }
+                });
+            }
+
+            @Override
+            public void onMatchStarted(String matchCode) {
+                Platform.runLater(() -> {
+                    if (pendingMatchType == PendingMatchType.QUEUE) {
+                        goToGameScreen(matchCode);
+                    } else if (pendingMatchType == PendingMatchType.PRIVATE && matchCode.equals(pendingPrivateMatchCode)) {
+                        goToGameScreen(matchCode);
+                    }
+                });
+            }
+
+            @Override
+            public void onMatchCancelled(String matchCode, String reason) {
+                Platform.runLater(() -> {
+                    if (pendingMatchType == PendingMatchType.QUEUE) {
+                        clearPendingMatchState();
+                        searchStatusLabel.setText("Match cancelled: " + reason);
+                    } else if (pendingMatchType == PendingMatchType.PRIVATE && matchCode.equals(pendingPrivateMatchCode)) {
+                        clearPendingMatchState();
+                        searchStatusLabel.setText("Private match closed: " + reason);
+                    }
+                });
+            }
+        });
+    }
+
+    private void goToGameScreen(String matchCode) {
+        clearPendingMatchState();
+        Screen.transitionToScreen(() -> {
+            Platform.runLater(() -> ScreenManager.setScreen(new GameScreen(matchCode)));
+        }, mainLayout);
+    }
+
+    private void setSearchControlsDisabled(boolean disabled) {
+        findMatchBtn.setDisable(disabled);
+        if (searchMatchBtn != null) {
+            searchMatchBtn.setDisable(disabled);
+        }
+        createMatchBtn.setDisable(disabled);
+        joinPrivateBtn.setDisable(disabled);
+        if (matchSearchInput != null) {
+            matchSearchInput.setDisable(disabled);
+        }
+        if (privateCodeInput != null) {
+            privateCodeInput.setDisable(disabled);
         }
     }
 
-    private void onNextPage() {
-        if (currentPage < totalPages) {
-            currentPage++;
-            onPageRequested(currentPage);
-            fetchBackendMatchesData();
-        }
-    }
-
-    private int onFetchTotalActiveMatchesCount() {
-        return 5;
-    }
-
-    private int onFetchTotalPagesCount() {
-        return 2;
-    }
-
-    private void onPageRequested(int page) {
-    }
-
-    private void onFindMatch(String query) {
+    private void onSearchMatches() {
+        String query = matchSearchInput == null ? "" : matchSearchInput.getText();
+        fetchBackendMatchesData(query);
     }
 
     private void onCreatePrivateMatch() {
+        setSearchControlsDisabled(true);
+        searchStatusLabel.setText("Creating private match...");
+
+        MatchMakingService.createPrivateMatch(new MatchMakingService.MatchResultCallback() {
+            @Override
+            public void onSuccess(String action, String matchCode) {
+                Platform.runLater(() -> {
+                    pendingPrivateMatchCode = matchCode;
+                    searchStatusLabel.setText("Match created! Code: " + matchCode + " — waiting for opponent...");
+                    showPendingMatchOverlay(
+                        PendingMatchType.PRIVATE,
+                        "PRIVATE MATCH CREATED",
+                        "Share the code below and wait for an opponent.",
+                        matchCode,
+                        "CANCEL PRIVATE MATCH"
+                    );
+                    armQueueListener();
+                });
+            }
+
+            @Override
+            public void onFailure(String reason) {
+                Platform.runLater(() -> {
+                    searchStatusLabel.setText("Couldn't create match: " + reason);
+                    setSearchControlsDisabled(false);
+                });
+            }
+        });
+    }
+
+    private void showPendingMatchOverlay(PendingMatchType type, String title, String body, String matchCode, String cancelLabel) {
+        pendingMatchType = type;
+        pendingPrivateMatchCode = matchCode == null ? "" : matchCode;
+
+        if (matchOverlay != null) {
+            root.getChildren().remove(matchOverlay);
+        }
+
+        matchOverlay = new StackPane();
+        matchOverlay.setStyle("-fx-background-color: rgba(10, 10, 16, 0.7);"); 
+        matchOverlay.prefWidthProperty().bind(root.widthProperty());
+        matchOverlay.prefHeightProperty().bind(root.heightProperty());
+        matchOverlay.setAlignment(Pos.CENTER);
+
+        VBox card = new VBox(16);
+        card.setAlignment(Pos.CENTER);
+        card.setMaxWidth(380);
+        card.setMinWidth(320);
+        card.setMaxHeight(Region.USE_PREF_SIZE);
+        card.setPadding(new Insets(24));
+        card.setStyle("-fx-background-color: linear-gradient(to bottom right, #1E1E2A, #14141C); -fx-background-radius: 18; -fx-border-radius: 18; -fx-border-color: rgba(0, 173, 181, 0.3); -fx-border-width: 1.5;");
+        card.setEffect(new DropShadow(25, Color.web("#000000", 0.6)));
+
+        VBox content = new VBox(8);
+        content.setAlignment(Pos.CENTER); 
+
+        Label eyebrow = new Label(type == PendingMatchType.QUEUE ? "MATCHMAKING" : "PRIVATE MATCH");
+        eyebrow.setStyle("-fx-text-fill: #00ADB5; -fx-font-size: 11px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+
+        Label overlayTitle = new Label(title);
+        overlayTitle.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 20px; -fx-font-weight: 900;");
+
+        Label overlayBody = new Label(body);
+        overlayBody.setWrapText(true);
+        overlayBody.setAlignment(Pos.CENTER);
+        overlayBody.setStyle("-fx-text-fill: #A3A3B0; -fx-font-size: 13px; -fx-line-spacing: 3px;");
+
+        Label codeLabel = new Label(matchCode == null || matchCode.isBlank() ? "" : matchCode);
+        codeLabel.setVisible(matchCode != null && !matchCode.isBlank());
+        codeLabel.setManaged(matchCode != null && !matchCode.isBlank());
+        codeLabel.setStyle("-fx-text-fill: #FFFFFF; -fx-background-color: #17171F; -fx-padding: 10 20 10 20; -fx-background-radius: 8; -fx-font-size: 24px; -fx-font-weight: 900; -fx-letter-spacing: 5px; -fx-border-color: #2A2A36; -fx-border-radius: 8;");
+        
+        VBox.setMargin(codeLabel, new Insets(10, 0, 10, 0));
+
+        Label overlayHint = new Label(type == PendingMatchType.QUEUE ? "Press ESC to cancel queue" : "Press ESC to cancel match");
+        overlayHint.setStyle("-fx-text-fill: #5C5C64; -fx-font-size: 11px;");
+
+        Button cancelButton = new Button(cancelLabel);
+        cancelButton.setStyle("-fx-background-color: #FF4A4A; -fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-weight: bold; -fx-font-size: 13px; -fx-background-radius: 6; -fx-padding: 10 20 10 20; -fx-cursor: hand;");
+        cancelButton.setOnMouseEntered(e -> cancelButton.setStyle(cancelButton.getStyle() + "-fx-background-color: #FF6B6B;"));
+        cancelButton.setOnMouseExited(e -> cancelButton.setStyle(cancelButton.getStyle() + "-fx-background-color: #FF4A4A;"));
+        cancelButton.setOnAction(e -> cancelPendingMatch());
+
+        content.getChildren().addAll(eyebrow, overlayTitle, overlayBody, codeLabel, overlayHint);
+        card.getChildren().addAll(content, cancelButton);
+        matchOverlay.getChildren().add(card);
+        root.getChildren().add(matchOverlay);
+
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(150), matchOverlay);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+        fadeIn.play();
+
+        ScaleTransition cardScale = new ScaleTransition(Duration.millis(180), card);
+        cardScale.setFromX(0.9);
+        cardScale.setFromY(0.9);
+        cardScale.setToX(1.0);
+        cardScale.setToY(1.0);
+        cardScale.setInterpolator(Interpolator.EASE_OUT);
+        cardScale.play();
+    }
+
+    private void cancelPendingMatch() {
+        if (pendingMatchType == PendingMatchType.NONE) {
+            return;
+        }
+
+        if (pendingMatchType == PendingMatchType.QUEUE) {
+            MatchMakingService.cancelQueue(new MatchMakingService.MatchResultCallback() {
+                @Override
+                public void onSuccess(String action, String matchCode) {
+                    Platform.runLater(MainScreen.this::clearPendingMatchState);
+                }
+
+                @Override
+                public void onFailure(String reason) {
+                    Platform.runLater(MainScreen.this::clearPendingMatchState);
+                }
+            });
+            return;
+        }
+
+        if (pendingPrivateMatchCode == null || pendingPrivateMatchCode.isBlank()) {
+            clearPendingMatchState();
+            return;
+        }
+
+        MatchMakingService.cancelPrivateMatch(pendingPrivateMatchCode, new MatchMakingService.MatchResultCallback() {
+            @Override
+            public void onSuccess(String action, String matchCode) {
+                Platform.runLater(MainScreen.this::clearPendingMatchState);
+            }
+
+            @Override
+            public void onFailure(String reason) {
+                Platform.runLater(MainScreen.this::clearPendingMatchState);
+            }
+        });
+    }
+
+    private void clearPendingMatchState() {
+        MatchMakingService.stopListeningForCountdown();
+        pendingMatchType = PendingMatchType.NONE;
+        pendingPrivateMatchCode = "";
+        setSearchControlsDisabled(false);
+        searchStatusLabel.setText("");
+        mainLayout.setDisable(false);
+
+        if (matchOverlay != null) {
+            root.getChildren().remove(matchOverlay);
+            matchOverlay = null;
+        }
     }
 
     private void onSpectate(String matchId) {
+        setSearchControlsDisabled(true);
+        SpectateMatchService.spectate(matchId, new SpectateMatchService.SpectateCallback() {
+            @Override
+            public void onSuccess(String code) {
+                Platform.runLater(() -> Screen.transitionToScreen(() -> {
+                    Platform.runLater(() -> ScreenManager.setScreen(new SpectatorScreen(code)));
+                }, mainLayout));
+            }
+
+            @Override
+            public void onFailure(String reason) {
+                Platform.runLater(() -> {
+                    searchStatusLabel.setText("Could not spectate: " + reason);
+                    setSearchControlsDisabled(false);
+                });
+            }
+        });
     }
 
     private void onRefreshMatches() {
-        fetchBackendMatchesData();
+        fetchBackendMatchesData(currentMatchQuery);
     }
 
     private void onProfileClick() {
@@ -631,6 +1096,16 @@ public class MainScreen implements Screen {
 
     public void onUsersClick(){
         ScreenManager.setScreen(new UserSearchScreen());
+    }
+
+    @Override
+    public void onEscapeKeyPressed() {
+        if (pendingMatchType != PendingMatchType.NONE) {
+            cancelPendingMatch();
+            return;
+        }
+
+        Screen.super.onEscapeKeyPressed();
     }
 
     @Override 

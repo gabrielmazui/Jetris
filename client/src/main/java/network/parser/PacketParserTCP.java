@@ -155,6 +155,98 @@ public class PacketParserTCP implements Runnable {
                         }
                         break;
 
+                    case "MATCH":
+                        {
+                            String[] body = bodyRaw.split(" ", 3);
+                            String status = body.length > 0 ? body[0] : "";
+                            boolean isSuccess = "SUCCESS".equalsIgnoreCase(status);
+
+                            if (code == 5 || code == 7) {
+                                String payload = body.length > 1 ? body[1] : "";
+                                packet = new matchListPacket(code, payload, callbackCode, isSuccess, payload);
+                            } else if (isSuccess) {
+                                String action = body.length > 1 ? body[1] : "";
+                                String matchCode = body.length > 2 ? body[2].trim() : "";
+                                packet = new matchPacket(code, bodyRaw, callbackCode, true, action, matchCode);
+                            } else {
+                                String reason = body.length > 1 ? body[1] : "Unknown_error";
+                                packet = new matchPacket(code, reason, callbackCode, false, "FAIL", "");
+                            }
+                        }
+                        break;
+
+                    case "MATCH_COUNTDOWN":
+                        {
+                            
+                            String[] body = bodyRaw.split(" ", 2);
+                            if (body.length >= 2) {
+                                try {
+                                    String matchCode = body[0];
+                                    int secondsLeft = Integer.parseInt(body[1].trim());
+                                    packet = new matchCountdownPacket(matchCode, secondsLeft);
+                                } catch (NumberFormatException e) {
+            
+                                }
+                            }
+                        }
+                        break;
+
+                    case "MATCH_ABORT":
+                        {
+                            String[] body = bodyRaw.split(" ", 2);
+                            if (body.length >= 2) {
+                                String matchCode = body[0];
+                                String reason = body[1].trim();
+                                packet = new matchAbortPacket(matchCode, reason);
+                            }
+                        }
+                        break;
+
+                    case "MATCH_STATE":
+                        {
+                            String[] body = bodyRaw.split(" ", 3);
+                            if (body.length >= 3) {
+                                String matchCode = body[0];
+                                String state = body[1];
+                                String payload = body[2];
+                                packet = new matchStatePacket(matchCode, state, payload);
+                            }
+                        }
+                        break;
+
+                    case "MATCHRESULT":
+                        {
+                            String[] body = bodyRaw.split(" ", 2);
+                            String status = body.length > 0 ? body[0] : "";
+                            boolean isSuccess = "SUCCESS".equalsIgnoreCase(status);
+                            String payload = body.length > 1 ? body[1] : "";
+                            if (isSuccess && !payload.isBlank()) {
+                                String[] fields = payload.split("\\|", 5);
+                                if (fields.length >= 3) {
+                                    long startMs = fields.length >= 4 ? parseLongSafe(fields[3]) : 0L;
+                                    long endMs   = fields.length >= 5 ? parseLongSafe(fields[4]) : 0L;
+                                    packet = new matchResultPacket(fields[0], fields[1], fields[2], startMs, endMs);
+                                }
+                            }
+                        }
+                        break;
+
+                    case "CHAT":
+                        {
+                            String[] body = bodyRaw.split(" ", 4);
+                            if (body.length >= 4) {
+                                String matchCode = body[0];
+                                try {
+                                    int senderId = Integer.parseInt(body[1]);
+                                    String senderName = body[2];
+                                    String message = body[3];
+                                    packet = new chatPacket(matchCode, senderId, senderName, message);
+                                } catch (NumberFormatException e) {
+                                }
+                            }
+                        }
+                        break;
+
                     default:
                         break;
                 }
@@ -170,5 +262,9 @@ public class PacketParserTCP implements Runnable {
             } catch (Exception e) {
             }
         }
+    }
+
+    private static long parseLongSafe(String s) {
+        try { return Long.parseLong(s.trim()); } catch (Exception e) { return 0L; }
     }
 }

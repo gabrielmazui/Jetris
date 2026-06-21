@@ -196,12 +196,11 @@ public class LoadingScreen implements Screen {
     private void aguardarAuth(){
         Thread.startVirtualThread(() ->{
             UserSession.carregarDoArquivo();
-            Screen screen = new LoginScreen();
             if(LoginService.verifyTokenCache()){
-                screen = new MainScreen();
+                Platform.runLater(() -> this.transicaoParaProximaTela(new MainScreen()));
+            } else {
+                Platform.runLater(() -> this.transicaoParaProximaTela(new LoginScreen()));
             }
-            final Screen screen2 = screen;
-            Platform.runLater(() -> this.transicaoParaProximaTela(screen2));
         });
     }
 
@@ -235,7 +234,6 @@ public class LoadingScreen implements Screen {
         );
 
         outroAnimation.setOnFinished(evt -> {
-            ScreenManager.retryMenu = false;
             ScreenManager.setScreen(screen);
         });
         outroAnimation.play();

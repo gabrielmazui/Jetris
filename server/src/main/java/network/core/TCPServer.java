@@ -23,15 +23,27 @@ public class TCPServer {
                     Socket clientSocket = serverSocket.accept();
                     String clientIp = clientSocket.getInetAddress().getHostAddress();
 
-                    if (NetworkContext.isAddressAllowed(clientIp)) {
-                        System.out.println("[TCP Server] Connection accepted from: " + clientIp);
-                        Thread.startVirtualThread(new TCPClientHandler(clientSocket));
-                        PrintWriter writer = new PrintWriter(clientSocket.getOutputStream(), true);
-                        TCPConnectionManager.registerClient(clientIp, writer);
-                    } else {
+                    if (!NetworkContext.isAddressAllowed(clientIp)) {
                         System.out.println("[TCP Server] Connection rejected (Blacklisted IP): " + clientIp);
                         clientSocket.close();
+                        continue;
                     }
+
+                    if (TCPConnectionManager.hasClient(clientIp)) {
+                        System.out.println("[TCP Server] Connection rejected (IP already connected): " + clientIp);
+                        clientSocket.close();
+                        continue;
+                    }
+
+                    PrintWriter writer = new PrintWriter(clientSocket.getOutputStream(), true);
+                    if (!TCPConnectionManager.registerClientIfAbsent(clientIp, writer)) {
+                        System.out.println("[TCP Server] Connection rejected (IP already connected): " + clientIp);
+                        clientSocket.close();
+                        continue;
+                    }
+
+                    System.out.println("[TCP Server] Connection accepted from: " + clientIp);
+                    Thread.startVirtualThread(new TCPClientHandler(clientSocket));
                 }
             } catch (IOException e) {
                 System.err.println("[TCP Server] Connection lost or failed to bind: " + e.getMessage());

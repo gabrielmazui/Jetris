@@ -22,8 +22,6 @@ public class ScreenManager {
     private static double xOffset;
     private static double yOffset;
 
-    volatile static public Boolean retryMenu = true;
-
     public static void init(Stage primaryStage, ui.screens.Screen firstScreen) {
         stage = primaryStage;
         scene = new Scene(firstScreen.getRoot());
@@ -91,14 +89,8 @@ public class ScreenManager {
 
     public static void setScreen(ui.screens.Screen screen) {
         if (scene != null && screen != null) {
-            Boolean retryMenuAux = retryMenu;
-            CurrScreen.DisableRetryMenu();
             Platform.runLater(() -> scene.setRoot(screen.getRoot()));
             CurrScreen = screen;
-            if(retryMenuAux){
-                retryMenu = false;
-                CurrScreen.EnableRetryMenu();
-            }
         }
     }
 

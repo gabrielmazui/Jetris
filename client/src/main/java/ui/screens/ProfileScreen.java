@@ -22,6 +22,10 @@ import network.NetworkContext;
 import ui.service.GetProfileService;
 
 import java.io.ByteArrayInputStream;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -67,21 +71,21 @@ public class ProfileScreen implements Screen {
     """;
 
     private static final String WIN_CARD_STYLE = """
-        -fx-background-color: #1A2A1E;
-        -fx-background-radius: 8;
-        -fx-border-radius: 8;
-        -fx-border-color: #2E6B3A;
+        -fx-background-color: #13191A;
+        -fx-background-radius: 10;
+        -fx-border-radius: 10;
+        -fx-border-color: #00E67622;
         -fx-border-width: 1;
-        -fx-padding: 16;
+        -fx-padding: 0;
     """;
 
     private static final String LOSS_CARD_STYLE = """
-        -fx-background-color: #2A1A1A;
-        -fx-background-radius: 8;
-        -fx-border-radius: 8;
-        -fx-border-color: #6B2E2E;
+        -fx-background-color: #19131A;
+        -fx-background-radius: 10;
+        -fx-border-radius: 10;
+        -fx-border-color: #FF4A4A22;
         -fx-border-width: 1;
-        -fx-padding: 16;
+        -fx-padding: 0;
     """;
 
     private static final String SCROLL_PANE_STYLE = """
@@ -363,14 +367,15 @@ public class ProfileScreen implements Screen {
             }
 
             String[] tokens = matchesRaw.trim().split(" ");
-            for (int i = 0; i + 5 < tokens.length; i += 6) {
-                String  p1       = tokens[i];
-                String  p2       = tokens[i + 1];
-                int     duration = Integer.parseInt(tokens[i + 2]);
-                int     score1   = Integer.parseInt(tokens[i + 3]);
-                int     score2   = Integer.parseInt(tokens[i + 4]);
-                boolean won      = Boolean.parseBoolean(tokens[i + 5]);
-                matchHistoryList.getChildren().add(buildMatchCard(p1, p2, duration, score1, score2, won));
+            for (int i = 0; i + 5 < tokens.length; i += 7) {
+                String  p1            = tokens[i];
+                String  p2            = tokens[i + 1];
+                int     duration      = Integer.parseInt(tokens[i + 2]);
+                int     score1        = Integer.parseInt(tokens[i + 3]);
+                int     score2        = Integer.parseInt(tokens[i + 4]);
+                boolean won           = Boolean.parseBoolean(tokens[i + 5]);
+                long    matchDateMs   = (i + 6 < tokens.length) ? parseLongSafe(tokens[i + 6]) : 0L;
+                matchHistoryList.getChildren().add(buildMatchCard(p1, p2, duration, score1, score2, won, matchDateMs));
             }
 
             hideStatus();
@@ -380,33 +385,79 @@ public class ProfileScreen implements Screen {
         }
     }
 
-    private HBox buildMatchCard(String p1, String p2, int duration, int score1, int score2, boolean won) {
-        HBox card = new HBox(16);
+    private HBox buildMatchCard(String p1, String p2, int duration, int score1, int score2, boolean won, long matchDateMs) {
+        String accent = won ? "#00E676" : "#FF4A4A";
+        String accentDim = won ? "#00E67633" : "#FF4A4A33";
+
+        HBox card = new HBox(0);
         card.setStyle(won ? WIN_CARD_STYLE : LOSS_CARD_STYLE);
         card.setAlignment(Pos.CENTER_LEFT);
+        card.setMaxWidth(Double.MAX_VALUE);
 
-        Label result = new Label(won ? "WIN" : "LOSS");
-        result.setMinWidth(44);
-        result.setStyle("-fx-text-fill: " + (won ? "#00E676" : "#FF4A4A") + "; " +
-                        "-fx-font-family: 'Segoe UI'; -fx-font-size: 12px; -fx-font-weight: 800;");
+        // colored left accent bar
+        Region accentBar = new Region();
+        accentBar.setMinWidth(4);
+        accentBar.setMaxWidth(4);
+        accentBar.setMaxHeight(Double.MAX_VALUE);
+        accentBar.setStyle("-fx-background-color: " + accent + "; -fx-background-radius: 10 0 0 10;");
 
-        VBox matchInfo = new VBox(4);
-        Label players = new Label(p1 + "  vs  " + p2);
-        players.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 14px; -fx-font-weight: bold;");
+        HBox inner = new HBox(14);
+        inner.setAlignment(Pos.CENTER_LEFT);
+        inner.setPadding(new Insets(12, 14, 12, 14));
+        HBox.setHgrow(inner, Priority.ALWAYS);
 
-        Label score = new Label("Score: " + score1 + " — " + score2);
-        score.setStyle("-fx-text-fill: #00ADB5; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px; -fx-font-weight: bold;");
+        // WIN / LOSS badge
+        Label badge = new Label(won ? "WIN" : "LOSS");
+        badge.setMinWidth(46);
+        badge.setAlignment(Pos.CENTER);
+        badge.setStyle("-fx-text-fill: " + accent + "; -fx-font-family: 'Segoe UI'; -fx-font-size: 11px; "
+                + "-fx-font-weight: 800; -fx-background-color: " + accentDim + "; "
+                + "-fx-background-radius: 6; -fx-padding: 4 8 4 8; -fx-letter-spacing: 1px;");
 
-        matchInfo.getChildren().addAll(players, score);
+        // matchup
+        VBox matchInfo = new VBox(3);
+        String me = config.UserSession.getUsername();
+        boolean meIsP1 = me != null && me.equalsIgnoreCase(p1);
+        String myName = meIsP1 ? p1 : p2;
+        String oppName = meIsP1 ? p2 : p1;
+        Label playersLabel = new Label(myName + "  vs  " + oppName);
+        playersLabel.setStyle("-fx-text-fill: #FFFFFF; -fx-font-family: 'Segoe UI'; -fx-font-size: 13px; -fx-font-weight: 700;");
+        String durationStr = duration > 0 ? String.format("%d:%02d", duration / 60, duration % 60) : "—";
+        Label durLabel = new Label(durationStr);
+        durLabel.setStyle("-fx-text-fill: #5C5C64; -fx-font-family: 'Segoe UI'; -fx-font-size: 11px;");
+        matchInfo.getChildren().addAll(playersLabel, durLabel);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label dur = new Label(String.format("⏱ %d:%02d", duration / 60, duration % 60));
-        dur.setStyle("-fx-text-fill: #6E6E77; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px;");
+        // date/time block
+        VBox timeBox = new VBox(2);
+        timeBox.setAlignment(Pos.CENTER_RIGHT);
+        if (matchDateMs > 0) {
+            ZoneId zone = ZoneId.systemDefault();
+            long startMs = matchDateMs - (long) duration * 1000;
+            LocalDateTime startTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(startMs), zone);
+            LocalDateTime endTime   = LocalDateTime.ofInstant(Instant.ofEpochMilli(matchDateMs), zone);
+            DateTimeFormatter dayFmt  = DateTimeFormatter.ofPattern("dd/MM");
+            DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
+            Label dateLabel = new Label(startTime.format(dayFmt));
+            dateLabel.setStyle("-fx-text-fill: #A3A3AA; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px; -fx-font-weight: 700;");
+            Label timeLabel = new Label(startTime.format(timeFmt) + " – " + endTime.format(timeFmt));
+            timeLabel.setStyle("-fx-text-fill: #5C5C64; -fx-font-family: 'Segoe UI'; -fx-font-size: 11px;");
+            timeBox.getChildren().addAll(dateLabel, timeLabel);
+        } else if (duration > 0) {
+            Label dur = new Label(durationStr);
+            dur.setStyle("-fx-text-fill: #6E6E77; -fx-font-family: 'Segoe UI'; -fx-font-size: 12px;");
+            timeBox.getChildren().add(dur);
+        }
 
-        card.getChildren().addAll(result, matchInfo, spacer, dur);
+        inner.getChildren().addAll(badge, matchInfo, spacer, timeBox);
+        card.getChildren().addAll(accentBar, inner);
         return card;
+    }
+
+    private long parseLongSafe(String s) {
+        try { return Long.parseLong(s); } catch (Exception e) { return 0L; }
     }
 
     private VBox makeStat(String labelText, String value, String color) {
