@@ -102,6 +102,7 @@ public class GameScreen implements Screen {
     private boolean isPlayer2 = false;
     private Label p1ScoreLabel;
     private Label p2ScoreLabel;
+    private Label spectatorCountLabel;
     private ParallelTransition currentCountdownAnim;
     private FadeTransition dismissFadeAnim;
     private int lastDisplayedCountdownNumber = -1;
@@ -322,7 +323,14 @@ public class GameScreen implements Screen {
         matchStateLabel = new Label();
         matchStateLabel.setStyle("-fx-background-color: rgba(0, 173, 181, 0.12); -fx-background-radius: 999; -fx-border-radius: 999; -fx-border-color: rgba(0, 173, 181, 0.35); -fx-text-fill: #00ADB5; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 6 14 6 14;");
 
-        container.getChildren().addAll(header, matchStateLabel);
+        spectatorCountLabel = new Label("0 spectators");
+        spectatorCountLabel.setStyle("-fx-background-color: rgba(255, 183, 77, 0.10); -fx-background-radius: 999; -fx-border-radius: 999; -fx-border-color: #FFB74D44; -fx-text-fill: #FFB74D; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 12 4 12;");
+        spectatorCountLabel.setVisible(false);
+
+        HBox statusRow = new HBox(12, matchStateLabel, spectatorCountLabel);
+        statusRow.setAlignment(Pos.CENTER);
+
+        container.getChildren().addAll(header, statusRow);
         return container;
     }
 
@@ -569,7 +577,7 @@ public class GameScreen implements Screen {
                 Platform.runLater(() -> {
                     animateCountdownNumber(secondsLeft);
                     updateMatchState("Starts in " + secondsLeft + "s", "#00ADB5");
-                    boardStatusLabel.setText("Countdown");
+                    if (boardStatusLabel != null) boardStatusLabel.setText("Countdown");
                 });
             }
 
@@ -584,7 +592,7 @@ public class GameScreen implements Screen {
                         showStartTime(matchStartWallTime);
                     }
                     updateMatchState("Match live", "#00E676");
-                    boardStatusLabel.setVisible(false);
+                    if (boardStatusLabel != null) boardStatusLabel.setVisible(false);
                     dismissCountdownOverlay();
                 });
             }
@@ -623,7 +631,7 @@ public class GameScreen implements Screen {
             String round = parts.length > 0 ? parts[0] : "1";
             String seconds = parts.length > 1 ? parts[1] : "5";
             updateMatchState("ROUND " + round, "#00ADB5");
-            boardStatusLabel.setVisible(false);
+            if (boardStatusLabel != null) boardStatusLabel.setVisible(false);
             roundLabel.setText("ROUND " + round);
             countdownGetReadyLabel.setVisible(true);
             countdownNumber.setText(String.valueOf(parseIntSafe(seconds)));
@@ -658,7 +666,7 @@ public class GameScreen implements Screen {
             String wins1 = parts.length > 3 ? parts[3] : "0";
             String wins2 = parts.length > 4 ? parts[4] : "0";
             updateMatchState("Round " + round + " ended", "#FFB74D");
-            boardStatusLabel.setVisible(false);
+            if (boardStatusLabel != null) boardStatusLabel.setVisible(false);
             String resultText = "Winner: " + winner + "   " + wins1 + " x " + wins2;
             if (reason != null && !reason.isBlank()) resultText += "   •   " + reason.replace("_", " ");
             roundLabel.setText("ROUND " + round + " ENDED");
@@ -681,7 +689,7 @@ public class GameScreen implements Screen {
         String board2 = parts[6];
 
         updateMatchState("Round " + round, "#00E676");
-        boardStatusLabel.setVisible(false);
+        if (boardStatusLabel != null) boardStatusLabel.setVisible(false);
         if (p1ScoreLabel != null) p1ScoreLabel.setText(wins1 + " WINS");
         if (p2ScoreLabel != null) p2ScoreLabel.setText(wins2 + " WINS");
 
@@ -769,7 +777,9 @@ public class GameScreen implements Screen {
                     @Override
                     public void onSuccess(java.util.List<MatchListService.LiveMatch> matches) {
                         if (!matchWatchdogRunning || leavingForMatchLoss) return;
-                        if (matches == null || matches.isEmpty()) switchToLoading();
+                        if (matches == null || matches.isEmpty()) { switchToLoading(); return; }
+                        MatchListService.LiveMatch m = matches.get(0);
+                        Platform.runLater(() -> updateSpectatorCount(m.spectators));
                     }
                     @Override
                     public void onFailure(String reason) {
@@ -805,6 +815,14 @@ public class GameScreen implements Screen {
             updateBoardSlot(board2TitleLabel, board2Avatar, opponentName, opponentPfp, Color.web("#FF4A4A"));
         }
         if (match.startTimeMillis > 0) showStartTime(match.startTimeMillis);
+        updateSpectatorCount(match.spectators);
+    }
+
+    private void updateSpectatorCount(int count) {
+        if (spectatorCountLabel == null) return;
+        String text = count == 1 ? "1 spectator" : count + " spectators";
+        spectatorCountLabel.setText(text);
+        spectatorCountLabel.setVisible(true);
     }
 
     private void updateHeaderSlot(Label nameLabel, Circle avatar, String name, String base64, String fallbackName, Color accent) {
