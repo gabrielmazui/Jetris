@@ -7,4 +7,4 @@ target/
 .vscode/
 dependency-reduced-pom.xml
 pfp.png
-cache_auth.properties
+client/src/main/resources/cache_auth.properties
