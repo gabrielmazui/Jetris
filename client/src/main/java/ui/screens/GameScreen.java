@@ -159,7 +159,7 @@ public class GameScreen implements Screen {
             if (chatInputField != null && chatInputField.isFocused()) return;
             KeyCode code = e.getCode();
             if (code == KeyCode.LEFT || code == KeyCode.RIGHT || code == KeyCode.DOWN
-                    || code == KeyCode.UP || code == KeyCode.SPACE || code == KeyCode.R) {
+                    || code == KeyCode.UP || code == KeyCode.SPACE) {
                 e.consume();
             }
             onKeyDown(code);
@@ -1089,7 +1089,7 @@ public class GameScreen implements Screen {
         if (keyCode == KeyCode.LEFT)       action = "LEFT";
         else if (keyCode == KeyCode.RIGHT) action = "RIGHT";
         else if (keyCode == KeyCode.DOWN)  action = "DOWN";
-        else if (keyCode == KeyCode.R)     action = "ROTATE";
+        else if (keyCode == KeyCode.UP)     action = "ROTATE";
         else if (keyCode == KeyCode.SPACE) action = "DROP";
         if (action != null) sendGameAction(action);
     }
